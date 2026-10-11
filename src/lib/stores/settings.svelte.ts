@@ -5,6 +5,8 @@ const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 
 class SettingsState {
   value = $state<Settings | null>(null);
+  /** The theme actually shown, with "system" resolved. */
+  resolvedTheme = $state<"dark" | "light">("dark");
 
   async load() {
     this.apply(await api.getSettings());
@@ -28,6 +30,7 @@ class SettingsState {
 
   private applyTheme(s: Settings) {
     const theme = s.theme === "system" ? (systemDark.matches ? "dark" : "light") : s.theme;
+    this.resolvedTheme = theme;
     document.documentElement.dataset.theme = theme;
   }
 }

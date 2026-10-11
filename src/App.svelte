@@ -15,6 +15,7 @@
   import ConnectPrompt from "./lib/components/ConnectPrompt.svelte";
   import Toasts from "./lib/components/Toasts.svelte";
   import Dashboard from "./lib/views/Dashboard.svelte";
+  import TerminalView from "./lib/views/TerminalView.svelte";
 
   let ready = $state(false);
   let menu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -94,9 +95,17 @@
           />
         {:else if tabs.active === "settings"}
           <div class="placeholder">{t("settings.title")}</div>
-        {:else}
-          <div class="placeholder">{tabs.active}</div>
         {/if}
+        <!-- Tabs stay mounted while hidden so their sessions keep running. -->
+        {#each tabs.list as tab (tab.id)}
+          <div class="pane" class:hidden={tabs.active !== tab.id}>
+            {#if tab.kind === "terminal"}
+              <TerminalView hostId={tab.hostId} active={tabs.active === tab.id} />
+            {:else}
+              <div class="placeholder">{t("tabs.files")}</div>
+            {/if}
+          </div>
+        {/each}
       </section>
       <footer class="statusbar">
         <span>{t("status.connectedCount", { count: hosts.connectedCount })}</span>
@@ -136,6 +145,14 @@
     position: relative;
     flex: 1;
     min-height: 0;
+  }
+  .pane {
+    position: absolute;
+    inset: 0;
+  }
+  .pane.hidden {
+    visibility: hidden;
+    pointer-events: none;
   }
   .placeholder {
     display: grid;
