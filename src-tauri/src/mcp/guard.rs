@@ -65,8 +65,10 @@ pub fn is_dangerous(command: &str) -> bool {
 #[serde(rename_all = "camelCase")]
 pub struct ConfirmRequest {
     pub id: u64,
+    /// Which assistant is asking, e.g. "Claude Code".
+    pub client: String,
     pub server: String,
-    /// `command` or `writeFile`.
+    /// `command`, `writeFile`, `delete`, `rename` or `edit`.
     pub action: String,
     pub detail: String,
 }
@@ -79,7 +81,14 @@ pub struct Confirmations {
 
 impl Confirmations {
     /// Shows the dialog in the app and waits for the user's decision.
-    pub async fn ask(&self, app: &AppHandle, server: &str, action: &str, detail: &str) -> bool {
+    pub async fn ask(
+        &self,
+        app: &AppHandle,
+        client: &str,
+        server: &str,
+        action: &str,
+        detail: &str,
+    ) -> bool {
         let id = self.next.fetch_add(1, Ordering::Relaxed) + 1;
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap().insert(id, tx);
@@ -93,6 +102,7 @@ impl Confirmations {
             "mcp-confirm",
             ConfirmRequest {
                 id,
+                client: client.to_string(),
                 server: server.to_string(),
                 action: action.to_string(),
                 detail: detail.to_string(),

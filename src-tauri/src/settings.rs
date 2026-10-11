@@ -48,6 +48,8 @@ pub struct McpSettings {
     pub port: u16,
     /// Commands that look destructive wait for confirmation in the app.
     pub confirm_dangerous: bool,
+    /// Adds tools that delete, rename and edit files. Off until the user turns it on.
+    pub full_access: bool,
     /// Bearer token MCP clients must send. Generated on first start.
     pub token: String,
 }
@@ -92,6 +94,7 @@ impl Default for McpSettings {
             enabled: true,
             port: 47821,
             confirm_dangerous: true,
+            full_access: false,
             token: String::new(),
         }
     }

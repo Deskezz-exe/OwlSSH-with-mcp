@@ -1,6 +1,6 @@
 use tauri::State;
 
-use crate::mcp::audit::AuditEntry;
+use crate::mcp::audit::{AuditPage, AuditQuery};
 use crate::mcp::McpStatus;
 use crate::state::AppState;
 
@@ -10,8 +10,8 @@ pub fn mcp_status(state: State<'_, AppState>) -> McpStatus {
 }
 
 #[tauri::command]
-pub fn mcp_activity(state: State<'_, AppState>, limit: Option<usize>) -> Vec<AuditEntry> {
-    state.audit.recent(limit.unwrap_or(200))
+pub fn mcp_activity(state: State<'_, AppState>, query: AuditQuery) -> AuditPage {
+    state.audit.page(&query)
 }
 
 /// The user's answer to an approval dialog.
