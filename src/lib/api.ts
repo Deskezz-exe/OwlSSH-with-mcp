@@ -70,7 +70,7 @@ export interface Settings {
   };
   keybindings: { copy: string; paste: string };
   streamerMode: boolean;
-  mcp: { enabled: boolean; port: number; confirmDangerous: boolean; token: string };
+  mcp: { enabled: boolean; port: number; confirmDangerous: boolean; fullAccess: boolean; token: string };
 }
 
 export interface Metrics {
@@ -105,6 +105,12 @@ export interface Listing {
   entries: Entry[];
 }
 
+/** A file or folder to copy; `name` renames it at the destination. */
+export interface TransferSource {
+  path: string;
+  name?: string | null;
+}
+
 export type TransferEvent =
   | { event: "started"; job: number; filesTotal: number; bytesTotal: number }
   | { event: "progress"; job: number; file: string; filesDone: number; bytesDone: number }
@@ -122,16 +128,26 @@ export interface McpStatus {
 export interface AuditEntry {
   time: number;
   tool: string;
+  client: string | null;
   server: string | null;
   detail: string;
   outcome: "ok" | "error" | "denied";
   exitCode: number | null;
 }
 
+export type AuditOutcome = "ok" | "error" | "denied";
+
+export interface AuditPage {
+  entries: AuditEntry[];
+  total: number;
+  clients: string[];
+}
+
 export interface ConfirmRequest {
   id: number;
+  client: string;
   server: string;
-  action: "command" | "writeFile";
+  action: "command" | "writeFile" | "delete" | "rename" | "edit";
   detail: string;
 }
 
@@ -204,10 +220,12 @@ export const api = {
   sftpMkdir: (hostId: string, path: string) => invoke<void>("sftp_mkdir", { hostId, path }),
   sftpRename: (hostId: string, from: string, to: string) => invoke<void>("sftp_rename", { hostId, from, to }),
   sftpRemove: (hostId: string, paths: string[]) => invoke<void>("sftp_remove", { hostId, paths }),
-  sftpUpload: (hostId: string, localPaths: string[], remoteDir: string, events: Channel<TransferEvent>) =>
-    invoke<number>("sftp_upload", { hostId, localPaths, remoteDir, events }),
-  sftpDownload: (hostId: string, remotePaths: string[], localDir: string, events: Channel<TransferEvent>) =>
-    invoke<number>("sftp_download", { hostId, remotePaths, localDir, events }),
+  sftpUpload: (hostId: string, sources: TransferSource[], remoteDir: string, events: Channel<TransferEvent>) =>
+    invoke<number>("sftp_upload", { hostId, sources, remoteDir, events }),
+  sftpDownload: (hostId: string, sources: TransferSource[], localDir: string, events: Channel<TransferEvent>) =>
+    invoke<number>("sftp_download", { hostId, sources, localDir, events }),
+  sftpExists: (hostId: string, paths: string[]) => invoke<boolean[]>("sftp_exists", { hostId, paths }),
+  localExists: (paths: string[]) => invoke<boolean[]>("local_exists", { paths }),
   sftpCancel: (job: number) => invoke<void>("sftp_cancel", { job }),
   localList: (path?: string) => invoke<Listing>("local_list", { path: path ?? null }),
   localRoots: () => invoke<string[]>("local_roots"),
@@ -215,7 +233,8 @@ export const api = {
   localRemove: (paths: string[]) => invoke<void>("local_remove", { paths }),
 
   mcpStatus: () => invoke<McpStatus>("mcp_status"),
-  mcpActivity: (limit?: number) => invoke<AuditEntry[]>("mcp_activity", { limit: limit ?? null }),
+  mcpActivity: (query: { offset: number; limit: number; outcome: AuditOutcome | null; client: string | null }) =>
+    invoke<AuditPage>("mcp_activity", { query }),
   mcpConfirmAnswer: (id: number, approve: boolean) => invoke<void>("mcp_confirm_answer", { id, approve }),
 
   listSnippets: () => invoke<Snippet[]>("list_snippets"),

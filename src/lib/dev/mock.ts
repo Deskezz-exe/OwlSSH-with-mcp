@@ -36,7 +36,7 @@ let settings: Settings = {
   terminal: { fontSize: 14, scrollback: 10000, cursorBlink: true, copyOnSelect: false, rightClick: "menu" },
   keybindings: { copy: "Ctrl+Shift+C", paste: "Ctrl+Shift+V" },
   streamerMode: false,
-  mcp: { enabled: true, port: 47821, confirmDangerous: true, token: "3f9c2a7be14d4c0f9a51d6e2b8c07a44" },
+  mcp: { enabled: true, port: 47821, confirmDangerous: true, fullAccess: false, token: "3f9c2a7be14d4c0f9a51d6e2b8c07a44" },
 };
 
 const connected = new Set<string>();
@@ -164,9 +164,13 @@ export function installMock() {
         case "local_roots":
           return ["C:\\", "D:\\"];
         case "local_list":
-          return listing(a.path ?? String.raw`C:\Users\dev`,"\\", ["Documents", "Downloads", "projects"], ["notes.txt", "deploy.sh", "backup.tar.gz"]);
+          return listing(a.path ?? String.raw`C:\Users\dev`,"\\", ["Documents", "Downloads", "projects"], ["notes.txt", "README.md", "deploy.sh", "backup.tar.gz", "logo.png", "app.ts"]);
         case "sftp_list":
           return listing(a.path && a.path !== "." ? a.path : "/home/deploy", "/", [".ssh", "app", "logs"], [".bashrc", "docker-compose.yml", "README.md"]);
+        case "sftp_exists":
+          return a.paths.map((p: string) => /docker-compose\.yml|README\.md|logs$|\(1\)/.test(p) && !/\(2\)/.test(p));
+        case "local_exists":
+          return a.paths.map((p: string) => /notes\.txt$/.test(p));
         case "sftp_upload":
         case "sftp_download": {
           const job = Date.now() % 100000;
@@ -186,12 +190,23 @@ export function installMock() {
         }
         case "mcp_status":
           return { running: settings.mcp.enabled, port: settings.mcp.port, url: `http://127.0.0.1:${settings.mcp.port}/mcp`, error: null };
-        case "mcp_activity":
-          return [
-            { time: Date.now() - 60000, tool: "run_command", server: "web-prod", detail: "docker ps --format '{{.Names}}'", outcome: "ok", exitCode: 0 },
-            { time: Date.now() - 50000, tool: "run_command", server: "web-prod", detail: "rm -rf /var/log/old", outcome: "denied", exitCode: null },
-            { time: Date.now() - 40000, tool: "read_file", server: "db-primary", detail: "/etc/postgresql/16/main/postgresql.conf", outcome: "ok", exitCode: null },
-          ];
+        case "mcp_activity": {
+          const tools = ["run_command", "read_file", "list_directory", "server_metrics", "upload_file"];
+          const clients = ["Claude Code", "Codex", "Cursor"];
+          const outcomes = ["ok", "ok", "ok", "error", "denied"];
+          const all = Array.from({ length: 42 }, (_, i) => ({
+            time: Date.now() - i * 95000,
+            tool: tools[i % tools.length],
+            client: clients[i % clients.length],
+            server: i % 2 ? "web-prod" : "db-primary",
+            detail: i % 5 === 0 ? `docker logs --tail 200 api-${i}` : i % 5 === 4 ? "rm -rf /var/log/old" : `/etc/nginx/sites-enabled/site-${i}.conf`,
+            outcome: outcomes[i % outcomes.length],
+            exitCode: tools[i % tools.length] === "run_command" ? (i % 3 ? 0 : 1) : null,
+          }));
+          const q = a.query;
+          const matching = all.filter((e) => (!q.outcome || e.outcome === q.outcome) && (!q.client || e.client === q.client));
+          return { entries: matching.slice(q.offset, q.offset + q.limit), total: matching.length, clients };
+        }
         case "mcp_confirm_answer":
           return null;
         case "list_snippets":

@@ -4,15 +4,15 @@ import { hosts } from "./hosts.svelte";
 
 class McpState {
   status = $state<McpStatus | null>(null);
-  activity = $state<AuditEntry[]>([]);
+  /** Bumped on every new audit entry so the journal knows to reload. */
+  activityTick = $state(0);
   /** Approval requests from assistants, oldest first. */
   pending = $state<ConfirmRequest[]>([]);
 
   async start() {
     await this.refresh();
-    this.activity = await api.mcpActivity(200).catch(() => []);
-    await listen<AuditEntry>("mcp-activity", ({ payload }) => {
-      this.activity = [payload, ...this.activity].slice(0, 200);
+    await listen<AuditEntry>("mcp-activity", () => {
+      this.activityTick++;
     });
     await listen<ConfirmRequest>("mcp-confirm", ({ payload }) => {
       this.pending.push(payload);

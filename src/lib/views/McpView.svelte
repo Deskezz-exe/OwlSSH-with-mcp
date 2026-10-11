@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { i18n, t } from "../i18n/index.svelte";
+  import { t } from "../i18n/index.svelte";
   import { settings } from "../stores/settings.svelte";
   import { mcp } from "../stores/mcp.svelte";
   import { copyText } from "../terminal/clipboard";
+  import McpJournal from "../components/McpJournal.svelte";
 
   const s = $derived(settings.value!);
   let showToken = $state(false);
@@ -21,7 +22,6 @@
     ),
   );
   const mask = (text: string) => (showToken ? text : text.replaceAll(s.mcp.token, "•".repeat(12)));
-  const timeFormat = $derived(new Intl.DateTimeFormat(i18n.locale, { dateStyle: "short", timeStyle: "medium" }));
 
   onMount(() => mcp.refresh());
 
@@ -76,6 +76,13 @@
       <span class="label">{t("mcp.confirm")}<small>{t("mcp.confirmHint")}</small></span>
       <input type="checkbox" class="switch" checked={s.mcp.confirmDangerous} onchange={(e) => change((x) => (x.mcp.confirmDangerous = e.currentTarget.checked))} />
     </label>
+    <label class="row">
+      <span class="label">{t("mcp.fullAccess")}<small>{t("mcp.fullAccessHint")}</small></span>
+      <input type="checkbox" class="switch" checked={s.mcp.fullAccess} onchange={(e) => change((x) => (x.mcp.fullAccess = e.currentTarget.checked))} />
+    </label>
+    {#if s.mcp.fullAccess}
+      <p class="warning">{t("mcp.fullAccessOn")}</p>
+    {/if}
     <div class="row">
       <span class="label">{t("mcp.token")}<small>{t("mcp.tokenHint")}</small></span>
       <div class="token">
@@ -106,23 +113,7 @@
 
   <section>
     <h2>{t("mcp.activity")}</h2>
-    {#if mcp.activity.length === 0}
-      <p class="empty">{t("mcp.activityEmpty")}</p>
-    {:else}
-      <ul class="log">
-        {#each mcp.activity as entry, i (entry.time + entry.tool + i)}
-          <li>
-            <span class="time">{timeFormat.format(entry.time)}</span>
-            <span class="tool mono">{entry.tool}</span>
-            <span class="server">{entry.server ?? ""}</span>
-            <span class="detail mono" title={entry.detail}>{entry.detail}</span>
-            <span class="outcome {entry.outcome}">
-              {t(`mcp.outcome.${entry.outcome}`)}{entry.exitCode !== null && entry.exitCode !== 0 ? ` · ${t("mcp.exit", { code: entry.exitCode })}` : ""}
-            </span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+    <McpJournal />
   </section>
 </div>
 
@@ -223,6 +214,14 @@
     border: 1px solid var(--border);
     font-size: 12px;
   }
+  .warning {
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 12.5px;
+  }
   .snippet + .snippet {
     margin-top: 12px;
   }
@@ -243,58 +242,5 @@
     font-size: 12px;
     white-space: pre-wrap;
     word-break: break-all;
-  }
-  .empty {
-    margin: 0;
-    color: var(--text-faint);
-  }
-  .log {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  .log li {
-    display: grid;
-    grid-template-columns: 150px 120px 110px minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
-    padding: 7px 0;
-    border-top: 1px solid var(--border);
-    font-size: 12.5px;
-  }
-  .time {
-    color: var(--text-faint);
-    font-size: 12px;
-  }
-  .tool {
-    color: var(--accent);
-    font-size: 12px;
-  }
-  .server {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .detail {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-  .outcome {
-    font-size: 11.5px;
-    padding: 1px 8px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--ok) 15%, transparent);
-    color: var(--ok);
-  }
-  .outcome.error {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-  .outcome.denied {
-    background: color-mix(in srgb, var(--warn) 15%, transparent);
-    color: var(--warn);
   }
 </style>

@@ -5,16 +5,23 @@
   import Modal from "./Modal.svelte";
 
   const request = $derived(mcp.pending[0]);
+  const actionKey = {
+    command: "mcp.askCommand",
+    writeFile: "mcp.askWrite",
+    delete: "mcp.askDelete",
+    rename: "mcp.askRename",
+    edit: "mcp.askEdit",
+  } as const;
 </script>
 
 {#if request}
-  <Modal title={t("mcp.askTitle")} onclose={() => mcp.answer(request, false)} width={560}>
+  <Modal
+    title={request.client ? t("mcp.askBy", { client: request.client }) : t("mcp.askTitle")}
+    onclose={() => mcp.answer(request, false)}
+    width={560}
+  >
     <div class="ask">
-      <p class="what">
-        {request.action === "command"
-          ? t("mcp.askCommand", { server: request.server })
-          : t("mcp.askWrite", { server: request.server })}
-      </p>
+      <p class="what">{t(actionKey[request.action] ?? "mcp.askCommand", { server: request.server })}</p>
       <pre class="mono">{request.detail}</pre>
       <p class="hint">{t("mcp.askHint")}</p>
     </div>
