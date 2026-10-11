@@ -48,6 +48,8 @@ pub struct McpSettings {
     pub port: u16,
     /// Commands that look destructive wait for confirmation in the app.
     pub confirm_dangerous: bool,
+    /// Bearer token MCP clients must send. Generated on first start.
+    pub token: String,
 }
 
 impl Default for Settings {
@@ -90,6 +92,7 @@ impl Default for McpSettings {
             enabled: true,
             port: 47821,
             confirm_dangerous: true,
+            token: String::new(),
         }
     }
 }

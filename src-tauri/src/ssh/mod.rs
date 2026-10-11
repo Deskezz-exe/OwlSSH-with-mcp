@@ -8,7 +8,7 @@ pub mod pool;
 pub mod sftp;
 pub mod terminal;
 
-pub use pool::{ConnectOptions, SshPool};
+pub use pool::{ConnectOptions, SshConn, SshPool};
 
 #[cfg(test)]
 mod tests;

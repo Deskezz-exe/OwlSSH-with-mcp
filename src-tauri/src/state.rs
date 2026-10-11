@@ -3,6 +3,9 @@ use std::sync::Arc;
 
 use crate::error::AppResult;
 use crate::hosts::HostStore;
+use crate::mcp::audit::AuditLog;
+use crate::mcp::guard::Confirmations;
+use crate::mcp::McpServer;
 use crate::settings::SettingsStore;
 use crate::ssh::sftp::SftpManager;
 use crate::ssh::terminal::TerminalManager;
@@ -15,6 +18,9 @@ pub struct AppState {
     pub pool: SshPool,
     pub terminals: TerminalManager,
     pub sftp: Arc<SftpManager>,
+    pub mcp: McpServer,
+    pub audit: AuditLog,
+    pub confirmations: Confirmations,
 }
 
 impl AppState {
@@ -23,12 +29,20 @@ impl AppState {
         let hosts = HostStore::load(data_dir.join("hosts.json"))?;
         let pool = SshPool::new(data_dir.join("known_hosts"));
         let settings = SettingsStore::load(data_dir.join("settings.json"));
+        let mut current = settings.get();
+        if current.mcp.token.is_empty() {
+            current.mcp.token = crate::mcp::new_token();
+            settings.save(current)?;
+        }
         Ok(Self {
             hosts,
             settings,
             pool,
             terminals: TerminalManager::default(),
             sftp: Arc::default(),
+            mcp: McpServer::default(),
+            audit: AuditLog::new(data_dir.join("mcp-audit.jsonl")),
+            confirmations: Confirmations::default(),
         })
     }
 }

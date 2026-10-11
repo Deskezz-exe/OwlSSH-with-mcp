@@ -30,6 +30,11 @@ russh = { version = "0.64", default-features = false, features = ["ring", "rsa",
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
 russh-sftp = "3.0.1"
+rmcp = { version = "3.5", features = ["server", "macros", "transport-streamable-http-server"] }
+axum = "0.8"
+schemars = "1"
+tokio-util = "0.7.20"
+regex = "1.13.1"
 
 [profile.release]
 opt-level = 3

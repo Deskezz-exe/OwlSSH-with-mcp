@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod hosts;
+mod mcp;
 mod secrets;
 mod settings;
 mod ssh;
@@ -15,7 +16,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
-            app.manage(state::AppState::new(data_dir)?);
+            let state = state::AppState::new(data_dir)?;
+            let mcp_settings = state.settings.get().mcp;
+            app.manage(state);
+            app.state::<state::AppState>()
+                .mcp
+                .restart(app.handle(), &mcp_settings);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -46,6 +52,9 @@ pub fn run() {
             commands::sftp::local_roots,
             commands::sftp::local_mkdir,
             commands::sftp::local_remove,
+            commands::mcp::mcp_status,
+            commands::mcp::mcp_activity,
+            commands::mcp::mcp_confirm_answer,
             commands::settings::get_settings,
             commands::settings::save_settings,
         ])
