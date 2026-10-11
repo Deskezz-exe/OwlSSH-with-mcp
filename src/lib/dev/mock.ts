@@ -40,8 +40,22 @@ let settings: Settings = {
 };
 
 const connected = new Set<string>();
-const terminals = new Map<number, Channel<ArrayBuffer>>();
+const terminals = new Map<number, { output: Channel<ArrayBuffer>; prompt: string; line: string }>();
 let nextTerminal = 1;
+
+/** Canned answers so the mocked shell looks alive in demos. */
+const shellReplies: Record<string, string> = {
+  uptime: " 14:02:11 up 14 days,  6:17,  1 user,  load average: 0.42, 0.37, 0.31",
+  "docker ps": [
+    "CONTAINER ID   IMAGE            STATUS        PORTS                  NAMES",
+    "a41c9e2f0b7d   nginx:1.27       Up 6 days     0.0.0.0:443->443/tcp   proxy",
+    "7be0d13c55a2   ghcr.io/app:2.4  Up 6 days     3000/tcp               api",
+    "c93f5a8e21d0   postgres:16      Up 14 days    5432/tcp               db",
+    "0d6b7f4a9c13   redis:7          Up 14 days    6379/tcp               cache",
+  ].join("\r\n"),
+  "df -h /": "Filesystem  Size  Used Avail Use% Mounted on\r\n/dev/vda1    80G   23G   54G  30% /",
+  ls: "\x1b[34mapp\x1b[0m  \x1b[34mlogs\x1b[0m  docker-compose.yml  README.md",
+};
 const encoder = new TextEncoder();
 const send = (ch: Channel<ArrayBuffer>, text: string) =>
   ch.onmessage(encoder.encode(text).buffer as ArrayBuffer);
@@ -143,16 +157,31 @@ export function installMock() {
         }
         case "terminal_open": {
           const id = nextTerminal++;
-          terminals.set(id, a.output);
           const h = hosts.find((h) => h.id === a.hostId)!;
-          setTimeout(() =>
-            send(a.output, `Welcome to Ubuntu 24.04 LTS\r\n\r\n\x1b[32m${h.username}@${h.name}\x1b[0m:\x1b[34m~\x1b[0m$ `),
-          );
+          const prompt = `\x1b[32m${h.username}@${h.name}\x1b[0m:\x1b[34m~\x1b[0m$ `;
+          terminals.set(id, { output: a.output, prompt, line: "" });
+          setTimeout(() => send(a.output, `Welcome to Ubuntu 24.04 LTS\r\n\r\n${prompt}`));
           return id;
         }
         case "terminal_write": {
-          const ch = terminals.get(a.id);
-          if (ch) send(ch, a.data === "\r" ? "\r\n$ " : a.data);
+          const term = terminals.get(a.id);
+          if (!term) return null;
+          for (const ch of a.data as string) {
+            if (ch === "\r") {
+              const cmd = term.line.trim();
+              const reply = cmd ? (shellReplies[cmd] ?? `${cmd.split(" ")[0]}: command not found`) : null;
+              send(term.output, `\r\n${reply === null ? "" : reply + "\r\n"}${term.prompt}`);
+              term.line = "";
+            } else if (ch === "\x7f") {
+              if (term.line) {
+                term.line = term.line.slice(0, -1);
+                send(term.output, "\b \b");
+              }
+            } else {
+              term.line += ch;
+              send(term.output, ch);
+            }
+          }
           return null;
         }
         case "terminal_resize":
