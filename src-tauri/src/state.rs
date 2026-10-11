@@ -7,6 +7,7 @@ use crate::mcp::audit::AuditLog;
 use crate::mcp::guard::Confirmations;
 use crate::mcp::McpServer;
 use crate::settings::SettingsStore;
+use crate::snippets::SnippetStore;
 use crate::ssh::sftp::SftpManager;
 use crate::ssh::terminal::TerminalManager;
 use crate::ssh::SshPool;
@@ -21,6 +22,7 @@ pub struct AppState {
     pub mcp: McpServer,
     pub audit: AuditLog,
     pub confirmations: Confirmations,
+    pub snippets: SnippetStore,
 }
 
 impl AppState {
@@ -43,6 +45,7 @@ impl AppState {
             mcp: McpServer::default(),
             audit: AuditLog::new(data_dir.join("mcp-audit.jsonl")),
             confirmations: Confirmations::default(),
+            snippets: SnippetStore::load(data_dir.join("snippets.json")),
         })
     }
 }

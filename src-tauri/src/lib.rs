@@ -4,6 +4,7 @@ mod hosts;
 mod mcp;
 mod secrets;
 mod settings;
+mod snippets;
 mod ssh;
 mod state;
 
@@ -55,6 +56,10 @@ pub fn run() {
             commands::mcp::mcp_status,
             commands::mcp::mcp_activity,
             commands::mcp::mcp_confirm_answer,
+            commands::snippets::list_snippets,
+            commands::snippets::save_snippet,
+            commands::snippets::delete_snippet,
+            commands::snippets::broadcast_command,
             commands::settings::get_settings,
             commands::settings::save_settings,
         ])
