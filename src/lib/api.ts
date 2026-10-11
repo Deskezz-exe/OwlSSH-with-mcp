@@ -70,7 +70,7 @@ export interface Settings {
   };
   keybindings: { copy: string; paste: string };
   streamerMode: boolean;
-  mcp: { enabled: boolean; port: number; confirmDangerous: boolean };
+  mcp: { enabled: boolean; port: number; confirmDangerous: boolean; token: string };
 }
 
 export interface Metrics {
@@ -111,6 +111,29 @@ export type TransferEvent =
   | { event: "finished"; job: number }
   | { event: "failed"; job: number; message: string }
   | { event: "cancelled"; job: number };
+
+export interface McpStatus {
+  running: boolean;
+  port: number;
+  url: string;
+  error: string | null;
+}
+
+export interface AuditEntry {
+  time: number;
+  tool: string;
+  server: string | null;
+  detail: string;
+  outcome: "ok" | "error" | "denied";
+  exitCode: number | null;
+}
+
+export interface ConfirmRequest {
+  id: number;
+  server: string;
+  action: "command" | "writeFile";
+  detail: string;
+}
 
 export interface TerminalExit {
   id: number;
@@ -175,6 +198,10 @@ export const api = {
   localRoots: () => invoke<string[]>("local_roots"),
   localMkdir: (path: string) => invoke<void>("local_mkdir", { path }),
   localRemove: (paths: string[]) => invoke<void>("local_remove", { paths }),
+
+  mcpStatus: () => invoke<McpStatus>("mcp_status"),
+  mcpActivity: (limit?: number) => invoke<AuditEntry[]>("mcp_activity", { limit: limit ?? null }),
+  mcpConfirmAnswer: (id: number, approve: boolean) => invoke<void>("mcp_confirm_answer", { id, approve }),
 
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),

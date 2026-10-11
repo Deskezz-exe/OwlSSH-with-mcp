@@ -36,7 +36,7 @@ let settings: Settings = {
   terminal: { fontSize: 14, scrollback: 10000, cursorBlink: true, copyOnSelect: false, rightClick: "menu" },
   keybindings: { copy: "Ctrl+Shift+C", paste: "Ctrl+Shift+V" },
   streamerMode: false,
-  mcp: { enabled: true, port: 47821, confirmDangerous: true },
+  mcp: { enabled: true, port: 47821, confirmDangerous: true, token: "3f9c2a7be14d4c0f9a51d6e2b8c07a44" },
 };
 
 const connected = new Set<string>();
@@ -184,6 +184,16 @@ export function installMock() {
           }, 300);
           return job;
         }
+        case "mcp_status":
+          return { running: settings.mcp.enabled, port: settings.mcp.port, url: `http://127.0.0.1:${settings.mcp.port}/mcp`, error: null };
+        case "mcp_activity":
+          return [
+            { time: Date.now() - 60000, tool: "run_command", server: "web-prod", detail: "docker ps --format '{{.Names}}'", outcome: "ok", exitCode: 0 },
+            { time: Date.now() - 50000, tool: "run_command", server: "web-prod", detail: "rm -rf /var/log/old", outcome: "denied", exitCode: null },
+            { time: Date.now() - 40000, tool: "read_file", server: "db-primary", detail: "/etc/postgresql/16/main/postgresql.conf", outcome: "ok", exitCode: null },
+          ];
+        case "mcp_confirm_answer":
+          return null;
         case "get_settings":
           return settings;
         case "save_settings":

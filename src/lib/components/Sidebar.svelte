@@ -43,6 +43,9 @@
     <button class="nav" class:active={tabs.active === "dashboard"} onclick={() => tabs.show("dashboard")}>
       <span class="glyph">▦</span>{t("nav.dashboard")}
     </button>
+    <button class="nav" class:active={tabs.active === "mcp"} onclick={() => tabs.show("mcp")}>
+      <span class="glyph">◎</span>{t("nav.mcp")}
+    </button>
   </nav>
 
   <div class="section">

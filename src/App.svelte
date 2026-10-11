@@ -7,6 +7,7 @@
   import { tabs, type Tab, type TabKind } from "./lib/stores/tabs.svelte";
   import { toast } from "./lib/stores/toast.svelte";
   import { metrics } from "./lib/stores/metrics.svelte";
+  import { mcp } from "./lib/stores/mcp.svelte";
   import { errorText, type Host } from "./lib/api";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TabBar from "./lib/components/TabBar.svelte";
@@ -20,6 +21,8 @@
   import SettingsView from "./lib/views/SettingsView.svelte";
   import FilesView from "./lib/views/FilesView.svelte";
   import TextPrompt from "./lib/components/TextPrompt.svelte";
+  import McpView from "./lib/views/McpView.svelte";
+  import McpConfirm from "./lib/components/McpConfirm.svelte";
 
   let ready = $state(false);
   let menu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -31,6 +34,7 @@
     await settings.load();
     await hosts.load();
     metrics.start();
+    mcp.start();
     ready = true;
   });
 
@@ -100,6 +104,8 @@
           />
         {:else if tabs.active === "settings"}
           <SettingsView />
+        {:else if tabs.active === "mcp"}
+          <McpView />
         {/if}
         <!-- Tabs stay mounted while hidden so their sessions keep running. -->
         {#each tabs.list as tab (tab.id)}
@@ -114,6 +120,9 @@
       </section>
       <footer class="statusbar">
         <span>{t("status.connectedCount", { count: hosts.connectedCount })}</span>
+        <button class="mcp-status" class:on={mcp.status?.running} onclick={() => tabs.show("mcp")}>
+          <span class="dot"></span>{t("mcp.status")}{mcp.status?.running ? ` · 127.0.0.1:${mcp.status.port}` : ""}
+        </button>
       </footer>
     </main>
   </div>
@@ -133,6 +142,7 @@
 {/if}
 <ConnectPrompt />
 <TextPrompt />
+<McpConfirm />
 <Toasts />
 
 <style>
@@ -158,6 +168,29 @@
   }
   .pane.hidden {
     display: none;
+  }
+  .mcp-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 0 6px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 12px;
+  }
+  .mcp-status:hover {
+    color: var(--text);
+  }
+  .mcp-status .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+  .mcp-status.on .dot {
+    background: var(--ok);
   }
   .statusbar {
     display: flex;
