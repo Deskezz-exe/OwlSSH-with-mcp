@@ -1,0 +1,22 @@
+:root {
+  --bg: #0b0d12;
+  --text: #e6e8ee;
+  --text-dim: #8a90a0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
