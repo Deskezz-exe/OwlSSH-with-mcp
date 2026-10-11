@@ -89,6 +89,29 @@ export interface Metrics {
   docker: { running: number; total: number } | null;
 }
 
+export type EntryKind = "dir" | "file" | "symlink" | "other";
+
+export interface Entry {
+  name: string;
+  path: string;
+  kind: EntryKind;
+  size: number;
+  modified: number | null;
+  permissions: string | null;
+}
+
+export interface Listing {
+  path: string;
+  entries: Entry[];
+}
+
+export type TransferEvent =
+  | { event: "started"; job: number; filesTotal: number; bytesTotal: number }
+  | { event: "progress"; job: number; file: string; filesDone: number; bytesDone: number }
+  | { event: "finished"; job: number }
+  | { event: "failed"; job: number; message: string }
+  | { event: "cancelled"; job: number };
+
 export interface TerminalExit {
   id: number;
   exitCode: number | null;
@@ -138,6 +161,20 @@ export const api = {
   terminalResize: (id: number, cols: number, rows: number) =>
     invoke<void>("terminal_resize", { id, cols, rows }),
   terminalClose: (id: number) => invoke<void>("terminal_close", { id }),
+
+  sftpList: (hostId: string, path?: string) => invoke<Listing>("sftp_list", { hostId, path: path ?? null }),
+  sftpMkdir: (hostId: string, path: string) => invoke<void>("sftp_mkdir", { hostId, path }),
+  sftpRename: (hostId: string, from: string, to: string) => invoke<void>("sftp_rename", { hostId, from, to }),
+  sftpRemove: (hostId: string, paths: string[]) => invoke<void>("sftp_remove", { hostId, paths }),
+  sftpUpload: (hostId: string, localPaths: string[], remoteDir: string, events: Channel<TransferEvent>) =>
+    invoke<number>("sftp_upload", { hostId, localPaths, remoteDir, events }),
+  sftpDownload: (hostId: string, remotePaths: string[], localDir: string, events: Channel<TransferEvent>) =>
+    invoke<number>("sftp_download", { hostId, remotePaths, localDir, events }),
+  sftpCancel: (job: number) => invoke<void>("sftp_cancel", { job }),
+  localList: (path?: string) => invoke<Listing>("local_list", { path: path ?? null }),
+  localRoots: () => invoke<string[]>("local_roots"),
+  localMkdir: (path: string) => invoke<void>("local_mkdir", { path }),
+  localRemove: (paths: string[]) => invoke<void>("local_remove", { paths }),
 
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),

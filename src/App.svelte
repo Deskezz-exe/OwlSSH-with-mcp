@@ -18,6 +18,8 @@
   import Dashboard from "./lib/views/Dashboard.svelte";
   import TerminalView from "./lib/views/TerminalView.svelte";
   import SettingsView from "./lib/views/SettingsView.svelte";
+  import FilesView from "./lib/views/FilesView.svelte";
+  import TextPrompt from "./lib/components/TextPrompt.svelte";
 
   let ready = $state(false);
   let menu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -105,7 +107,7 @@
             {#if tab.kind === "terminal"}
               <TerminalView hostId={tab.hostId} active={tabs.active === tab.id} />
             {:else}
-              <div class="placeholder">{t("tabs.files")}</div>
+              <FilesView hostId={tab.hostId} active={tabs.active === tab.id} />
             {/if}
           </div>
         {/each}
@@ -130,6 +132,7 @@
   />
 {/if}
 <ConnectPrompt />
+<TextPrompt />
 <Toasts />
 
 <style>
@@ -155,12 +158,6 @@
   }
   .pane.hidden {
     display: none;
-  }
-  .placeholder {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    color: var(--text-faint);
   }
   .statusbar {
     display: flex;

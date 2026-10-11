@@ -47,6 +47,18 @@ const send = (ch: Channel<ArrayBuffer>, text: string) =>
   ch.onmessage(encoder.encode(text).buffer as ArrayBuffer);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function listing(path: string, sep: string, dirs: string[], files: string[]) {
+  const join = (name: string) => (path.endsWith(sep) ? path + name : path + sep + name);
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    path,
+    entries: [
+      ...dirs.map((name, i) => ({ name, path: join(name), kind: "dir", size: 0, modified: now - i * 86400, permissions: "rwxr-xr-x" })),
+      ...files.map((name, i) => ({ name, path: join(name), kind: "file", size: 1500 * (i + 1) ** 5, modified: now - i * 3600, permissions: "rw-r--r--" })),
+    ],
+  };
+}
+
 export function installMock() {
   mockIPC(
     async (cmd, args) => {
@@ -149,6 +161,29 @@ export function installMock() {
           terminals.delete(a.id);
           await emit("terminal-exit", { id: a.id, exitCode: 0 });
           return null;
+        case "local_roots":
+          return ["C:\\", "D:\\"];
+        case "local_list":
+          return listing(a.path ?? String.raw`C:\Users\dev`,"\\", ["Documents", "Downloads", "projects"], ["notes.txt", "deploy.sh", "backup.tar.gz"]);
+        case "sftp_list":
+          return listing(a.path && a.path !== "." ? a.path : "/home/deploy", "/", [".ssh", "app", "logs"], [".bashrc", "docker-compose.yml", "README.md"]);
+        case "sftp_upload":
+        case "sftp_download": {
+          const job = Date.now() % 100000;
+          const ch = a.events;
+          const total = 48_000_000;
+          ch.onmessage({ event: "started", job, filesTotal: 3, bytesTotal: total });
+          let done = 0;
+          const timer = setInterval(() => {
+            done = Math.min(total, done + 6_000_000);
+            ch.onmessage({ event: "progress", job, file: "backup.tar.gz", filesDone: Math.floor((done / total) * 3), bytesDone: done });
+            if (done >= total) {
+              clearInterval(timer);
+              ch.onmessage({ event: "finished", job });
+            }
+          }, 300);
+          return job;
+        }
         case "get_settings":
           return settings;
         case "save_settings":
