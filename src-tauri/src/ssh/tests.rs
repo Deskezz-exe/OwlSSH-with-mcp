@@ -1,6 +1,7 @@
 //! End-to-end tests of the SSH engine against an in-process russh server:
-//! host key trust, password auth, exec and jump hosts.
+//! host key trust, password auth, exec, jump hosts and interactive shells.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -10,6 +11,7 @@ use russh::{Channel, ChannelId};
 use tokio::net::{TcpListener, TcpStream};
 
 use super::exec::exec;
+use super::terminal::TerminalManager;
 use super::{ConnectOptions, SshPool};
 use crate::error::AppError;
 use crate::hosts::{AuthKind, Host, HostInput, HostStore};
@@ -33,8 +35,11 @@ EXQyubeF5dU+mqS01y46AAAADW93bHNzaC10ZXN0LWI=
 
 const PASSWORD: &str = "hunter2";
 
-#[derive(Clone)]
-struct TestServer;
+/// Session channels, kept until the client asks for a shell on one.
+#[derive(Clone, Default)]
+struct TestServer {
+    channels: Arc<std::sync::Mutex<HashMap<ChannelId, Channel<Msg>>>>,
+}
 
 impl server::Handler for TestServer {
     type Error = russh::Error;
@@ -49,10 +54,11 @@ impl server::Handler for TestServer {
 
     async fn channel_open_session(
         &mut self,
-        _channel: Channel<Msg>,
+        channel: Channel<Msg>,
         reply: server::ChannelOpenHandle,
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
+        self.channels.lock().unwrap().insert(channel.id(), channel);
         reply.accept().await;
         Ok(())
     }
@@ -69,6 +75,48 @@ impl server::Handler for TestServer {
         session.exit_status_request(channel, 0)?;
         session.eof(channel)?;
         session.close(channel)?;
+        Ok(())
+    }
+
+    async fn pty_request(
+        &mut self,
+        channel: ChannelId,
+        _term: &str,
+        _cols: u32,
+        _rows: u32,
+        _pix_width: u32,
+        _pix_height: u32,
+        _modes: &[(russh::Pty, u32)],
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        session.channel_success(channel)?;
+        Ok(())
+    }
+
+    async fn shell_request(
+        &mut self,
+        channel: ChannelId,
+        session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        session.channel_success(channel)?;
+        let Some(mut shell) = self.channels.lock().unwrap().remove(&channel) else {
+            return Ok(());
+        };
+        // A tiny shell: prints a prompt, echoes input, `exit` ends with status 7.
+        tokio::spawn(async move {
+            let _ = shell.data_bytes(b"$ ".to_vec()).await;
+            while let Some(msg) = shell.wait().await {
+                if let russh::ChannelMsg::Data { data } = msg {
+                    if data.as_ref() == b"exit\r" {
+                        let _ = shell.exit_status(7).await;
+                        let _ = shell.eof().await;
+                        let _ = shell.close().await;
+                        break;
+                    }
+                    let _ = shell.data_bytes(data).await;
+                }
+            }
+        });
         Ok(())
     }
 
@@ -113,7 +161,8 @@ async fn start_server(host_key: PrivateKey) -> u16 {
         while let Ok((socket, _)) = listener.accept().await {
             let config = config.clone();
             tokio::spawn(async move {
-                if let Ok(session) = server::run_stream(config, socket, TestServer).await {
+                if let Ok(session) = server::run_stream(config, socket, TestServer::default()).await
+                {
                     let _ = session.await;
                 }
             });
@@ -276,4 +325,53 @@ async fn connects_through_jump_host() {
         .await
         .unwrap();
     assert_eq!(out.stdout, "ran: hostname\n");
+}
+
+#[tokio::test]
+async fn terminal_echoes_input_and_reports_exit() {
+    let port = start_server(key(KEY_A)).await;
+    let f = fixture();
+    let host = add_host(&f.store, "a", "127.0.0.1", port, None);
+    trust(&f, &host, &with_password()).await;
+    let conn = f.pool.existing(&host.id).unwrap();
+
+    let (out_tx, mut out_rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
+    let output = tauri::ipc::Channel::new(move |body| {
+        if let tauri::ipc::InvokeResponseBody::Raw(bytes) = body {
+            let _ = out_tx.send(bytes);
+        }
+        Ok(())
+    });
+    let (exit_tx, exit_rx) = tokio::sync::oneshot::channel();
+    let terminals = TerminalManager::default();
+    let id = terminals
+        .open(conn, &host.id, 80, 24, output, move |exit| {
+            let _ = exit_tx.send(exit);
+        })
+        .await
+        .unwrap();
+
+    let mut seen = Vec::new();
+    let wait_for = |seen: &[u8], needle: &[u8]| seen.windows(needle.len()).any(|w| w == needle);
+    terminals.write(id, b"hello".to_vec()).unwrap();
+    while !wait_for(&seen, b"$ hello") {
+        let chunk = tokio::time::timeout(Duration::from_secs(5), out_rx.recv())
+            .await
+            .expect("output in time")
+            .expect("channel open");
+        seen.extend(chunk);
+    }
+
+    terminals.resize(id, 120, 40).unwrap();
+    terminals.write(id, b"exit\r".to_vec()).unwrap();
+    let exit = tokio::time::timeout(Duration::from_secs(5), exit_rx)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(exit.id, id);
+    assert_eq!(exit.exit_code, Some(7));
+    assert!(
+        terminals.write(id, b"x".to_vec()).is_err(),
+        "closed terminals reject input"
+    );
 }

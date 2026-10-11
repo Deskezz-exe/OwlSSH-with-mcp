@@ -4,6 +4,7 @@ mod auth;
 pub mod exec;
 mod handler;
 pub mod pool;
+pub mod terminal;
 
 pub use pool::{ConnectOptions, SshPool};
 

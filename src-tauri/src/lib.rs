@@ -27,6 +27,10 @@ pub fn run() {
             commands::ssh::disconnect_host,
             commands::ssh::connected_hosts,
             commands::ssh::run_command,
+            commands::terminal::terminal_open,
+            commands::terminal::terminal_write,
+            commands::terminal::terminal_resize,
+            commands::terminal::terminal_close,
         ])
         .run(tauri::generate_context!())
         .expect("error while running OwlSSH");
