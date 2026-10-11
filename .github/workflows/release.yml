@@ -15,15 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Notes from CHANGELOG
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          # Everything between this version's heading and the next one.
-          awk -v v="$version" '
-            index($0, "## [" v "]") == 1 { found = 1; next }
-            found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md > notes.md
-          sed "s/<version>/$version/g" docs/release-footer.md >> notes.md
+        run: bash scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > notes.md
       - name: Create a fresh draft release
         env:
           GH_TOKEN: ${{ github.token }}
