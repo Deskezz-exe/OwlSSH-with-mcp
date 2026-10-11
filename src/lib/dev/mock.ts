@@ -104,6 +104,31 @@ export function installMock() {
         case "disconnect_host":
           connected.delete(a.hostId);
           return null;
+        case "host_metrics": {
+          if (!connected.has(a.hostId)) return null;
+          await sleep(450);
+          const r = (min: number, max: number) => min + Math.random() * (max - min);
+          const busy = a.hostId === "2";
+          return {
+            cpuPercent: busy ? r(70, 96) : r(3, 35),
+            cpus: busy ? 8 : 2,
+            load: [r(0.1, 2), r(0.1, 2), r(0.1, 2)],
+            memTotalKb: 8_000_000,
+            memUsedKb: busy ? 6_900_000 : r(1_500_000, 3_500_000),
+            swapTotalKb: 2_000_000,
+            swapUsedKb: 0,
+            diskTotalKb: 80_000_000,
+            diskUsedKb: busy ? 61_000_000 : 23_000_000,
+            uptimeSecs: 1_234_567,
+            os: "Ubuntu 24.04.1 LTS",
+            processes: [
+              { pid: 1234, cpu: 31.5, mem: 4.1, name: busy ? "postgres" : "node" },
+              { pid: 812, cpu: 6.2, mem: 10.4, name: "dockerd" },
+              { pid: 77, cpu: 1.1, mem: 0.6, name: "sshd" },
+            ],
+            docker: a.hostId === "1" ? { running: 4, total: 6 } : null,
+          };
+        }
         case "terminal_open": {
           const id = nextTerminal++;
           terminals.set(id, a.output);

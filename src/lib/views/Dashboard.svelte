@@ -3,6 +3,7 @@
   import { hosts } from "../stores/hosts.svelte";
   import type { Host } from "../api";
   import HostCard from "../components/HostCard.svelte";
+  import HostMetrics from "../components/HostMetrics.svelte";
 
   let {
     onadd,
@@ -39,7 +40,9 @@
   {:else}
     <div class="grid">
       {#each hosts.sorted as host (host.id)}
-        <HostCard {host} onopen={(kind) => onopen(kind, host)} onmenu={(e) => onmenu(host, e)} />
+        <HostCard {host} onopen={(kind) => onopen(kind, host)} onmenu={(e) => onmenu(host, e)}>
+          <HostMetrics hostId={host.id} />
+        </HostCard>
       {/each}
     </div>
   {/if}

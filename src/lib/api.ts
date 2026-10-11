@@ -73,6 +73,22 @@ export interface Settings {
   mcp: { enabled: boolean; port: number; confirmDangerous: boolean };
 }
 
+export interface Metrics {
+  cpuPercent: number | null;
+  cpus: number | null;
+  load: [number, number, number] | null;
+  memTotalKb: number | null;
+  memUsedKb: number | null;
+  swapTotalKb: number | null;
+  swapUsedKb: number | null;
+  diskTotalKb: number | null;
+  diskUsedKb: number | null;
+  uptimeSecs: number | null;
+  os: string | null;
+  processes: { pid: number; cpu: number; mem: number; name: string }[];
+  docker: { running: number; total: number } | null;
+}
+
 export interface TerminalExit {
   id: number;
   exitCode: number | null;
@@ -114,6 +130,7 @@ export const api = {
   connectedHosts: () => invoke<string[]>("connected_hosts"),
   runCommand: (hostId: string, command: string) =>
     invoke<ExecOutput>("run_command", { hostId, command }),
+  hostMetrics: (hostId: string) => invoke<Metrics | null>("host_metrics", { hostId }),
 
   terminalOpen: (hostId: string, cols: number, rows: number, output: Channel<ArrayBuffer>) =>
     invoke<number>("terminal_open", { hostId, cols, rows, output }),

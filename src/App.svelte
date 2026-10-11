@@ -6,6 +6,7 @@
   import { hosts } from "./lib/stores/hosts.svelte";
   import { tabs, type Tab, type TabKind } from "./lib/stores/tabs.svelte";
   import { toast } from "./lib/stores/toast.svelte";
+  import { metrics } from "./lib/stores/metrics.svelte";
   import { errorText, type Host } from "./lib/api";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TabBar from "./lib/components/TabBar.svelte";
@@ -27,6 +28,7 @@
   onMount(async () => {
     await settings.load();
     await hosts.load();
+    metrics.start();
     ready = true;
   });
 
@@ -152,8 +154,7 @@
     inset: 0;
   }
   .pane.hidden {
-    visibility: hidden;
-    pointer-events: none;
+    display: none;
   }
   .placeholder {
     display: grid;
