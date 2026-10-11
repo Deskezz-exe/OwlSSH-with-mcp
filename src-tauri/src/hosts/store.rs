@@ -30,6 +30,16 @@ impl HostStore {
         hosts
     }
 
+    pub fn get(&self, id: &str) -> AppResult<Host> {
+        self.hosts
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|h| h.id == id)
+            .cloned()
+            .ok_or_else(|| not_found(id))
+    }
+
     pub fn save(&self, input: HostInput) -> AppResult<Host> {
         input.validate().map_err(AppError::Invalid)?;
         let mut hosts = self.hosts.lock().unwrap();
@@ -128,12 +138,21 @@ impl HostStore {
     }
 
     pub fn set_favorite(&self, id: &str, favorite: bool) -> AppResult<Host> {
+        self.update(id, |h| h.favorite = favorite)
+    }
+
+    /// Records that a password was saved to the keychain from the connect dialog.
+    pub fn mark_password(&self, id: &str, has_password: bool) -> AppResult<Host> {
+        self.update(id, |h| h.has_password = has_password)
+    }
+
+    fn update(&self, id: &str, f: impl FnOnce(&mut Host)) -> AppResult<Host> {
         let mut hosts = self.hosts.lock().unwrap();
         let host = hosts
             .iter_mut()
             .find(|h| h.id == id)
             .ok_or_else(|| not_found(id))?;
-        host.favorite = favorite;
+        f(host);
         let updated = host.clone();
         write_atomic(&self.path, &hosts)?;
         Ok(updated)

@@ -16,6 +16,14 @@ pub fn set_password(host_id: &str, password: &str) -> AppResult<()> {
         .map_err(|e| AppError::Keychain(e.to_string()))
 }
 
+pub fn get_password(host_id: &str) -> AppResult<Option<String>> {
+    match entry(host_id)?.get_password() {
+        Ok(p) => Ok(Some(p)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(AppError::Keychain(e.to_string())),
+    }
+}
+
 pub fn delete_password(host_id: &str) -> AppResult<()> {
     match entry(host_id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),

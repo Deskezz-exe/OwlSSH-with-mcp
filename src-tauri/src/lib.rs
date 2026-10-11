@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod hosts;
 mod secrets;
+mod ssh;
 mod state;
 
 use tauri::Manager;
@@ -22,6 +23,10 @@ pub fn run() {
             commands::hosts::reorder_hosts,
             commands::hosts::preview_ssh_config,
             commands::hosts::import_ssh_config,
+            commands::ssh::connect_host,
+            commands::ssh::disconnect_host,
+            commands::ssh::connected_hosts,
+            commands::ssh::run_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running OwlSSH");
