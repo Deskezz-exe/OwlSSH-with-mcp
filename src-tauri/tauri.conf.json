@@ -26,13 +26,45 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "dmg",
+      "app",
+      "appimage",
+      "deb",
+      "rpm"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Deskezz-exe",
+    "copyright": "Copyright (c) 2026 Deskezz-exe. MIT License.",
+    "category": "DeveloperTool",
+    "shortDescription": "SSH client with a live server dashboard and a built-in MCP server",
+    "longDescription": "OwlSSH is a desktop SSH client with low-latency terminals, a live server dashboard, a two-pane file manager, snippets and an MCP server that lets AI assistants work on your servers with your approval.",
+    "homepage": "https://github.com/Deskezz-exe/OwlSSH-with-mcp",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English",
+          "Russian"
+        ],
+        "displayLanguageSelector": true
+      }
+    },
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "section": "net"
+      }
+    }
   }
 }

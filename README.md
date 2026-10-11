@@ -21,6 +21,20 @@ English interface by default, Russian available in settings.
 
 ---
 
+## Download
+
+Get the latest build from [Releases](https://github.com/Deskezz-exe/OwlSSH-with-mcp/releases/latest):
+
+| System | File |
+|---|---|
+| Windows 10/11 | `*_x64-setup.exe` installer, or `*_x64_portable.exe` that runs without installing |
+| macOS (Apple Silicon and Intel) | `*_universal.dmg` |
+| Linux | `*.AppImage`, `*.deb` or `*.rpm` |
+
+Every release has a `SHA256SUMS.txt` to check the files. The builds are not signed with a
+paid certificate yet, so Windows SmartScreen may ask you to click **More info** → **Run anyway**,
+and on macOS the first launch is right click → **Open**.
+
 ## Features
 
 **Terminal**
@@ -114,7 +128,10 @@ npm run tauri dev
 `npm run dev` alone starts the UI in a browser with a mocked backend, which is handy
 for working on the interface.
 
-Checks and release build:
+Releases are built by GitHub Actions: pushing a tag like `v0.2.0` builds every platform,
+attaches SHA-256 sums and publishes the release with the notes from [CHANGELOG.md](CHANGELOG.md).
+
+Checks and a local release build:
 
 ```bash
 npm run check
