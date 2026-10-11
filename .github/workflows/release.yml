@@ -24,17 +24,15 @@ jobs:
             found { print }
           ' CHANGELOG.md > notes.md
           sed "s/<version>/$version/g" docs/release-footer.md >> notes.md
-      - name: Create or reuse a draft release
+      - name: Create a fresh draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Re-pushing a tag reuses its release (drafts included) instead of failing.
-          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -n1)
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" -F draft=true -f body="$(cat notes.md)" > /dev/null
-          else
-            gh release create "$GITHUB_REF_NAME" --draft --title "OwlSSH $GITHUB_REF_NAME" --notes-file notes.md
+          # Re-pushing a tag replaces its release; the tag itself is kept.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release delete "$GITHUB_REF_NAME" --yes
           fi
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "OwlSSH $GITHUB_REF_NAME" --notes-file notes.md
 
   build:
     needs: create-release
@@ -87,11 +85,15 @@ jobs:
           shopt -s nullglob
           files=(${{ matrix.bundles }})
           if [ ${#files[@]} -eq 0 ]; then
-            echo "No installers were produced" >&2
+            found=$(find src-tauri/target -maxdepth 6 -path '*bundle*' -type f | head -n 20 | tr '\n' ' ')
+            echo "::error::No installers matched '${{ matrix.bundles }}'. Bundle files: $found"
             exit 1
           fi
           ls -la "${files[@]}"
-          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          if ! out=$(gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber 2>&1); then
+            echo "::error::Upload failed: $out"
+            exit 1
+          fi
 
       - name: Upload portable exe
         if: matrix.platform == 'windows-latest'
@@ -101,7 +103,10 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           cp src-tauri/target/release/owlssh.exe "OwlSSH_${version}_x64_portable.exe"
-          gh release upload "$GITHUB_REF_NAME" "OwlSSH_${version}_x64_portable.exe" --clobber
+          if ! out=$(gh release upload "$GITHUB_REF_NAME" "OwlSSH_${version}_x64_portable.exe" --clobber 2>&1); then
+            echo "::error::Portable upload failed: $out"
+            exit 1
+          fi
 
   publish:
     needs: build
