@@ -544,17 +544,20 @@ impl OwlTools {
         try_tool!(self.full_access());
         let host = try_tool!(self.find(&args.server));
         let mut entry = self.entry(&ctx, "delete_path", Some(&host), &args.path);
+        let sftp = match self.sftp(&host).await {
+            Ok(s) => s,
+            Err(e) => return self.finish(entry, Err(e)),
+        };
+        if sftp.symlink_metadata(args.path.clone()).await.is_err() {
+            return self.finish(entry, Err(format!("{} does not exist.", args.path)));
+        }
         if !self.approve(&mut entry, "delete", &args.path, true).await {
             return fail("The user did not approve deleting this path.");
         }
-        let result = async {
-            let sftp = self.sftp(&host).await?;
-            sftp::remove_remote(&sftp, &args.path)
-                .await
-                .map_err(|e| e.to_string())?;
-            Ok(format!("Deleted {}.", args.path))
-        }
-        .await;
+        let result = sftp::remove_remote(&sftp, &args.path)
+            .await
+            .map(|_| format!("Deleted {}.", args.path))
+            .map_err(|e| e.to_string());
         self.finish(entry, result)
     }
 
@@ -570,23 +573,31 @@ impl OwlTools {
         let host = try_tool!(self.find(&args.server));
         let detail = format!("{} -> {}", args.from, args.to);
         let mut entry = self.entry(&ctx, "rename_path", Some(&host), &detail);
+        let sftp = match self.sftp(&host).await {
+            Ok(s) => s,
+            Err(e) => return self.finish(entry, Err(e)),
+        };
+        // Check what can be checked before bothering the user with a dialog.
+        if sftp.symlink_metadata(args.from.clone()).await.is_err() {
+            return self.finish(entry, Err(format!("{} does not exist.", args.from)));
+        }
+        if sftp.symlink_metadata(args.to.clone()).await.is_ok() {
+            return self.finish(
+                entry,
+                Err(format!(
+                    "{} already exists. Choose another name or delete it first.",
+                    args.to
+                )),
+            );
+        }
         if !self.approve(&mut entry, "rename", &detail, true).await {
             return fail("The user did not approve this rename.");
         }
-        let result = async {
-            let sftp = self.sftp(&host).await?;
-            if sftp.symlink_metadata(args.to.clone()).await.is_ok() {
-                return Err(format!(
-                    "{} already exists. Choose another name or delete it first.",
-                    args.to
-                ));
-            }
-            sftp.rename(args.from.clone(), args.to.clone())
-                .await
-                .map_err(|e| e.to_string())?;
-            Ok(format!("Renamed {} to {}.", args.from, args.to))
-        }
-        .await;
+        let result = sftp
+            .rename(args.from.clone(), args.to.clone())
+            .await
+            .map(|_| format!("Renamed {} to {}.", args.from, args.to))
+            .map_err(|e| e.to_string());
         self.finish(entry, result)
     }
 
