@@ -16,6 +16,7 @@
   import Toasts from "./lib/components/Toasts.svelte";
   import Dashboard from "./lib/views/Dashboard.svelte";
   import TerminalView from "./lib/views/TerminalView.svelte";
+  import SettingsView from "./lib/views/SettingsView.svelte";
 
   let ready = $state(false);
   let menu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -94,7 +95,7 @@
             onmenu={hostMenu}
           />
         {:else if tabs.active === "settings"}
-          <div class="placeholder">{t("settings.title")}</div>
+          <SettingsView />
         {/if}
         <!-- Tabs stay mounted while hidden so their sessions keep running. -->
         {#each tabs.list as tab (tab.id)}
