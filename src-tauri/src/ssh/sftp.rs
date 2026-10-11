@@ -274,7 +274,11 @@ pub fn local_roots() -> Vec<String> {
 // ---------- Transfers ----------
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "event"
+)]
 pub enum TransferEvent {
     Started {
         job: u32,
@@ -352,10 +356,38 @@ where
     let _ = events.send(event);
 }
 
+/// Something to transfer. `name` gives it a different name at the destination
+/// (used when the user keeps both copies after a name conflict).
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Source {
+    pub path: String,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+impl Source {
+    pub fn plain(path: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            name: None,
+        }
+    }
+}
+
+/// Which of these remote paths already exist.
+pub async fn remote_exists(sftp: &SftpSession, paths: &[String]) -> Vec<bool> {
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        out.push(sftp.symlink_metadata(path.clone()).await.is_ok());
+    }
+    out
+}
+
 /// Copies local files and folders into `remote_dir`.
 pub async fn upload(
     sftp: &SftpSession,
-    local_paths: &[String],
+    sources: &[Source],
     remote_dir: &str,
     job: u32,
     cancel: &AtomicBool,
@@ -364,8 +396,14 @@ pub async fn upload(
     run_job(job, cancel, events, async {
         let mut items = Vec::new();
         let mut dirs = Vec::new();
-        for local in local_paths {
-            plan_upload(Path::new(local), remote_dir, &mut items, &mut dirs)?;
+        for src in sources {
+            plan_upload(
+                Path::new(&src.path),
+                remote_dir,
+                src.name.as_deref(),
+                &mut items,
+                &mut dirs,
+            )?;
         }
         start(job, &items, events);
         for dir in &dirs {
@@ -403,20 +441,24 @@ pub async fn upload(
 fn plan_upload(
     local: &Path,
     remote_dir: &str,
+    rename: Option<&str>,
     items: &mut Vec<Item>,
     dirs: &mut Vec<String>,
 ) -> AppResult<()> {
-    let name = local
-        .file_name()
-        .ok_or_else(|| AppError::Invalid(format!("cannot upload {}", local.display())))?
-        .to_string_lossy()
-        .into_owned();
+    let name = match rename {
+        Some(n) => n.to_string(),
+        None => local
+            .file_name()
+            .ok_or_else(|| AppError::Invalid(format!("cannot upload {}", local.display())))?
+            .to_string_lossy()
+            .into_owned(),
+    };
     let target = remote_join(remote_dir, &name);
     let meta = std::fs::metadata(local)?;
     if meta.is_dir() {
         dirs.push(target.clone());
         for child in std::fs::read_dir(local)? {
-            plan_upload(&child?.path(), &target, items, dirs)?;
+            plan_upload(&child?.path(), &target, None, items, dirs)?;
         }
     } else {
         items.push(Item {
@@ -431,7 +473,7 @@ fn plan_upload(
 /// Copies remote files and folders into `local_dir`.
 pub async fn download(
     sftp: &SftpSession,
-    remote_paths: &[String],
+    sources: &[Source],
     local_dir: &str,
     job: u32,
     cancel: &AtomicBool,
@@ -440,8 +482,16 @@ pub async fn download(
     run_job(job, cancel, events, async {
         let mut items = Vec::new();
         let mut dirs = Vec::new();
-        for remote in remote_paths {
-            plan_download(sftp, remote, Path::new(local_dir), &mut items, &mut dirs).await?;
+        for src in sources {
+            plan_download(
+                sftp,
+                &src.path,
+                Path::new(local_dir),
+                src.name.as_deref(),
+                &mut items,
+                &mut dirs,
+            )
+            .await?;
         }
         start(job, &items, events);
         for dir in &dirs {
@@ -473,15 +523,19 @@ async fn plan_download(
     sftp: &SftpSession,
     remote: &str,
     local_dir: &Path,
+    rename: Option<&str>,
     items: &mut Vec<Item>,
     dirs: &mut Vec<String>,
 ) -> AppResult<()> {
-    let name = remote
-        .trim_end_matches('/')
-        .rsplit('/')
-        .next()
-        .filter(|n| !n.is_empty())
-        .ok_or_else(|| AppError::Invalid(format!("cannot download {remote}")))?;
+    let name = match rename {
+        Some(n) => n,
+        None => remote
+            .trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .filter(|n| !n.is_empty())
+            .ok_or_else(|| AppError::Invalid(format!("cannot download {remote}")))?,
+    };
     let mut stack = vec![(remote.to_string(), local_dir.join(name))];
     while let Some((from, to)) = stack.pop() {
         let attrs = sftp.metadata(from.clone()).await.map_err(sftp_err)?;
@@ -558,6 +612,16 @@ mod tests {
     }
 
     #[test]
+    fn upload_can_rename_the_top_item() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("report.pdf");
+        std::fs::write(&file, "x").unwrap();
+        let (mut items, mut dirs) = (Vec::new(), Vec::new());
+        plan_upload(&file, "/srv", Some("report (1).pdf"), &mut items, &mut dirs).unwrap();
+        assert_eq!(items[0].to, "/srv/report (1).pdf");
+    }
+
+    #[test]
     fn plans_nested_upload() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("site");
@@ -565,7 +629,7 @@ mod tests {
         std::fs::write(root.join("index.html"), "<h1>").unwrap();
         std::fs::write(root.join("css/app.css"), "body{}").unwrap();
         let (mut items, mut dirs) = (Vec::new(), Vec::new());
-        plan_upload(&root, "/var/www", &mut items, &mut dirs).unwrap();
+        plan_upload(&root, "/var/www", None, &mut items, &mut dirs).unwrap();
         dirs.sort();
         assert_eq!(dirs, ["/var/www/site", "/var/www/site/css"]);
         let mut targets: Vec<_> = items.iter().map(|i| i.to.as_str()).collect();

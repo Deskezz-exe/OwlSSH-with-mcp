@@ -49,6 +49,8 @@ pub fn run() {
             commands::sftp::sftp_upload,
             commands::sftp::sftp_download,
             commands::sftp::sftp_cancel,
+            commands::sftp::sftp_exists,
+            commands::sftp::local_exists,
             commands::sftp::local_list,
             commands::sftp::local_roots,
             commands::sftp::local_mkdir,

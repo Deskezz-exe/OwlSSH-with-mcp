@@ -2,7 +2,7 @@ use tauri::ipc::Channel;
 use tauri::State;
 
 use crate::error::AppResult;
-use crate::ssh::sftp::{self, Listing, TransferEvent};
+use crate::ssh::sftp::{self, Listing, Source, TransferEvent};
 use crate::ssh::ConnectOptions;
 use crate::state::AppState;
 
@@ -72,7 +72,7 @@ pub async fn sftp_remove(
 pub async fn sftp_upload(
     state: State<'_, AppState>,
     host_id: String,
-    local_paths: Vec<String>,
+    sources: Vec<Source>,
     remote_dir: String,
     events: Channel<TransferEvent>,
 ) -> AppResult<u32> {
@@ -80,7 +80,7 @@ pub async fn sftp_upload(
     let (job, cancel) = state.sftp.new_job();
     let manager = state.sftp.clone();
     tokio::spawn(async move {
-        sftp::upload(&s, &local_paths, &remote_dir, job, &cancel, &events).await;
+        sftp::upload(&s, &sources, &remote_dir, job, &cancel, &events).await;
         manager.finish_job(job);
     });
     Ok(job)
@@ -90,7 +90,7 @@ pub async fn sftp_upload(
 pub async fn sftp_download(
     state: State<'_, AppState>,
     host_id: String,
-    remote_paths: Vec<String>,
+    sources: Vec<Source>,
     local_dir: String,
     events: Channel<TransferEvent>,
 ) -> AppResult<u32> {
@@ -98,7 +98,7 @@ pub async fn sftp_download(
     let (job, cancel) = state.sftp.new_job();
     let manager = state.sftp.clone();
     tokio::spawn(async move {
-        sftp::download(&s, &remote_paths, &local_dir, job, &cancel, &events).await;
+        sftp::download(&s, &sources, &local_dir, job, &cancel, &events).await;
         manager.finish_job(job);
     });
     Ok(job)
@@ -138,4 +138,23 @@ pub async fn local_remove(paths: Vec<String>) -> AppResult<()> {
         }
     }
     Ok(())
+}
+
+/// Which of these server paths already exist (for the replace / keep both prompt).
+#[tauri::command]
+pub async fn sftp_exists(
+    state: State<'_, AppState>,
+    host_id: String,
+    paths: Vec<String>,
+) -> AppResult<Vec<bool>> {
+    let s = session(&state, &host_id).await?;
+    Ok(sftp::remote_exists(&s, &paths).await)
+}
+
+#[tauri::command]
+pub fn local_exists(paths: Vec<String>) -> Vec<bool> {
+    paths
+        .iter()
+        .map(|p| std::path::Path::new(p).symlink_metadata().is_ok())
+        .collect()
 }
