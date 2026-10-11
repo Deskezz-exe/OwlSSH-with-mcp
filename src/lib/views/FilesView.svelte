@@ -337,9 +337,9 @@
 
 <style>
   .files {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 12px;
     height: 100%;
     padding: 14px;
   }
@@ -373,10 +373,16 @@
     color: var(--accent-text);
     transform: scale(1.06);
   }
+  /* Transfers float over the panes like notifications, so the layout never moves. */
   .jobs {
+    position: absolute;
+    right: 22px;
+    bottom: 22px;
+    z-index: 20;
     display: grid;
     gap: 8px;
-    max-height: 30%;
+    width: min(400px, calc(100% - 44px));
+    max-height: 55%;
     overflow: auto;
   }
   .job {
@@ -385,8 +391,9 @@
     gap: 12px;
     padding: 10px 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
     animation: rise 0.18s ease-out;
   }
   .dir {

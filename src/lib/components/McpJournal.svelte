@@ -66,10 +66,7 @@
   {/if}
 </div>
 
-{#if data.entries.length === 0}
-  <p class="empty">{t("mcp.activityEmpty")}</p>
-{:else}
-  <div class="table" role="table">
+<div class="table" role="table" style:--rows={PAGE_SIZE}>
     <div class="row head" role="row">
       <span>{t("mcp.colTime")}</span>
       <span>{t("mcp.colClient")}</span>
@@ -108,11 +105,14 @@
         </div>
       {/if}
     {/each}
+    {#if data.entries.length === 0}
+      <p class="empty">{t("mcp.activityEmpty")}</p>
+    {/if}
   </div>
 
   <div class="pager">
     <span class="count">
-      {t("mcp.shown", {
+      {data.total === 0 ? "" : t("mcp.shown", {
         from: page * PAGE_SIZE + 1,
         to: Math.min(data.total, (page + 1) * PAGE_SIZE),
         total: data.total,
@@ -124,7 +124,6 @@
       <button class="btn ghost" disabled={page >= pages - 1} onclick={() => goto(page + 1)}>{t("mcp.next")} ›</button>
     </div>
   </div>
-{/if}
 
 <style>
   .toolbar {
@@ -141,9 +140,14 @@
   }
   .empty {
     margin: 0;
+    padding: 40px 14px;
+    text-align: center;
     color: var(--text-faint);
   }
+  /* Always tall enough for a full page, so filtering never makes the block jump. */
   .table {
+    --row: 38px;
+    min-height: calc(var(--row) * (var(--rows) + 1) + 2px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
@@ -154,7 +158,8 @@
     gap: 12px;
     align-items: center;
     width: 100%;
-    padding: 9px 14px;
+    height: var(--row);
+    padding: 0 14px;
     border: 0;
     background: transparent;
     text-align: left;

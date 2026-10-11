@@ -207,8 +207,10 @@ button {
   background: var(--input);
 }
 .segmented button {
-  flex: 1;
+  /* Grow to share space, but never shrink below the label. */
+  flex: 1 0 auto;
   min-width: 76px;
+  white-space: nowrap;
   height: 28px;
   padding: 0 12px;
   border: 0;
