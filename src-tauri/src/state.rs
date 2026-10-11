@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::error::AppResult;
 use crate::hosts::HostStore;
 use crate::settings::SettingsStore;
+use crate::ssh::sftp::SftpManager;
 use crate::ssh::terminal::TerminalManager;
 use crate::ssh::SshPool;
 
@@ -12,6 +14,7 @@ pub struct AppState {
     pub settings: SettingsStore,
     pub pool: SshPool,
     pub terminals: TerminalManager,
+    pub sftp: Arc<SftpManager>,
 }
 
 impl AppState {
@@ -25,6 +28,7 @@ impl AppState {
             settings,
             pool,
             terminals: TerminalManager::default(),
+            sftp: Arc::default(),
         })
     }
 }

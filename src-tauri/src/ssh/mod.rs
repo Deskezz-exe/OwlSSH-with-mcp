@@ -5,6 +5,7 @@ pub mod exec;
 mod handler;
 pub mod metrics;
 pub mod pool;
+pub mod sftp;
 pub mod terminal;
 
 pub use pool::{ConnectOptions, SshPool};

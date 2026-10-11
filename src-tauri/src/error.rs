@@ -45,6 +45,8 @@ pub enum AppError {
     },
     #[error("{0}")]
     Timeout(String),
+    #[error("{0}")]
+    Sftp(String),
 }
 
 impl AppError {
@@ -61,6 +63,7 @@ impl AppError {
             AppError::HostKeyUnknown { .. } => "hostKeyUnknown",
             AppError::HostKeyChanged { .. } => "hostKeyChanged",
             AppError::Timeout(_) => "timeout",
+            AppError::Sftp(_) => "sftp",
         }
     }
 

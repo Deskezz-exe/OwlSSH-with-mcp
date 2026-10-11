@@ -26,6 +26,7 @@ pub async fn connect_host(
 #[tauri::command]
 pub async fn disconnect_host(state: State<'_, AppState>, host_id: String) -> AppResult<()> {
     state.terminals.close_host(&host_id);
+    state.sftp.forget(&host_id);
     state.pool.disconnect(&host_id).await;
     Ok(())
 }
