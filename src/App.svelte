@@ -1,16 +1,26 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { ask } from "@tauri-apps/plugin-dialog";
   import { t } from "./lib/i18n/index.svelte";
   import { settings } from "./lib/stores/settings.svelte";
   import { hosts } from "./lib/stores/hosts.svelte";
-  import { tabs, type Tab } from "./lib/stores/tabs.svelte";
-  import type { Host } from "./lib/api";
+  import { tabs, type Tab, type TabKind } from "./lib/stores/tabs.svelte";
+  import { toast } from "./lib/stores/toast.svelte";
+  import { errorText, type Host } from "./lib/api";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TabBar from "./lib/components/TabBar.svelte";
   import ContextMenu, { type MenuItem } from "./lib/components/ContextMenu.svelte";
+  import HostEditor from "./lib/components/HostEditor.svelte";
+  import ImportDialog from "./lib/components/ImportDialog.svelte";
+  import ConnectPrompt from "./lib/components/ConnectPrompt.svelte";
+  import Toasts from "./lib/components/Toasts.svelte";
+  import Dashboard from "./lib/views/Dashboard.svelte";
 
   let ready = $state(false);
   let menu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  /** undefined: closed, null: new host, Host: editing. */
+  let editing = $state<Host | null | undefined>(undefined);
+  let importing = $state(false);
 
   onMount(async () => {
     await settings.load();
@@ -35,17 +45,33 @@
           action: () => hosts.toggleFavorite(host),
           separatorBefore: true,
         },
+        { label: t("hosts.edit"), action: () => (editing = host) },
+        { label: t("hosts.delete"), action: () => remove(host), danger: true },
       ],
     };
   }
 
-  async function openTab(kind: "terminal" | "files", host: Host) {
+  async function openTab(kind: TabKind, host: Host) {
     if (await hosts.connect(host.id)) tabs.open(kind, host.id);
   }
 
   async function disconnect(host: Host) {
     tabs.closeHost(host.id);
     await hosts.disconnect(host.id);
+  }
+
+  async function remove(host: Host) {
+    const ok = await ask(t("hosts.deleteConfirm", { name: host.name }), {
+      title: t("hosts.delete"),
+      kind: "warning",
+    });
+    if (!ok) return;
+    try {
+      tabs.closeHost(host.id);
+      await hosts.remove(host.id);
+    } catch (e) {
+      toast.show(errorText(e), "error");
+    }
   }
 
   function closeTab(tab: Tab) {
@@ -55,12 +81,17 @@
 
 {#if ready}
   <div class="shell">
-    <Sidebar onadd={() => {}} onhostmenu={hostMenu} />
+    <Sidebar onadd={() => (editing = null)} onhostmenu={hostMenu} />
     <main>
       <TabBar onclose={closeTab} />
       <section class="content">
         {#if tabs.active === "dashboard"}
-          <div class="placeholder">{t("nav.dashboard")}</div>
+          <Dashboard
+            onadd={() => (editing = null)}
+            onimport={() => (importing = true)}
+            onopen={openTab}
+            onmenu={hostMenu}
+          />
         {:else if tabs.active === "settings"}
           <div class="placeholder">{t("settings.title")}</div>
         {:else}
@@ -77,6 +108,17 @@
 {#if menu}
   <ContextMenu {...menu} onclose={() => (menu = null)} />
 {/if}
+{#if editing !== undefined}
+  <HostEditor host={editing} onclose={() => (editing = undefined)} />
+{/if}
+{#if importing}
+  <ImportDialog
+    onclose={() => (importing = false)}
+    ondone={(count) => toast.show(t("import.done", { count }))}
+  />
+{/if}
+<ConnectPrompt />
+<Toasts />
 
 <style>
   .shell {
