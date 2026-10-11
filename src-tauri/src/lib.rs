@@ -1,6 +1,28 @@
+mod commands;
+mod error;
+mod hosts;
+mod secrets;
+mod state;
+
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            let data_dir = app.path().app_data_dir()?;
+            app.manage(state::AppState::new(data_dir)?);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::hosts::list_hosts,
+            commands::hosts::save_host,
+            commands::hosts::delete_host,
+            commands::hosts::set_favorite,
+            commands::hosts::reorder_hosts,
+            commands::hosts::preview_ssh_config,
+            commands::hosts::import_ssh_config,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running OwlSSH");
 }
