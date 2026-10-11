@@ -12,10 +12,8 @@ permissions:
 jobs:
   create-release:
     runs-on: ubuntu-latest
-    outputs:
-      release_id: ${{ steps.release.outputs.id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Notes from CHANGELOG
         run: |
           version="${GITHUB_REF_NAME#v}"
@@ -26,14 +24,17 @@ jobs:
             found { print }
           ' CHANGELOG.md > notes.md
           sed "s/<version>/$version/g" docs/release-footer.md >> notes.md
-      - name: Create draft release
-        id: release
+      - name: Create or reuse a draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --title "OwlSSH $GITHUB_REF_NAME" --notes-file notes.md
-          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id")
-          echo "id=$id" >> "$GITHUB_OUTPUT"
+          # Re-pushing a tag reuses its release (drafts included) instead of failing.
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -n1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" -F draft=true -f body="$(cat notes.md)" > /dev/null
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --title "OwlSSH $GITHUB_REF_NAME" --notes-file notes.md
+          fi
 
   build:
     needs: create-release
@@ -43,13 +44,16 @@ jobs:
         include:
           - platform: windows-latest
             args: ""
+            bundles: "src-tauri/target/release/bundle/nsis/*-setup.exe"
           - platform: macos-latest
             args: "--target universal-apple-darwin"
+            bundles: "src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg"
           - platform: ubuntu-22.04
             args: ""
+            bundles: "src-tauri/target/release/bundle/appimage/*.AppImage src-tauri/target/release/bundle/deb/*.deb src-tauri/target/release/bundle/rpm/*.rpm"
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Linux build dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -57,7 +61,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -72,13 +76,22 @@ jobs:
 
       - run: npm ci
 
-      - name: Build and upload installers
-        uses: tauri-apps/tauri-action@v0
+      - name: Build installers
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Upload installers
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.args }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(${{ matrix.bundles }})
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No installers were produced" >&2
+            exit 1
+          fi
+          ls -la "${files[@]}"
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
 
       - name: Upload portable exe
         if: matrix.platform == 'windows-latest'
@@ -91,7 +104,7 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" "OwlSSH_${version}_x64_portable.exe" --clobber
 
   publish:
-    needs: [create-release, build]
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checksums and publish
