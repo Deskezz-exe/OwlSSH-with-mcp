@@ -79,8 +79,11 @@
     border-radius: 10px;
     transition: border-color 0.15s;
   }
+  .card.connected {
+    border-color: var(--border-strong);
+  }
   .card:hover {
-    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    border-color: var(--accent-line);
   }
   header {
     display: flex;

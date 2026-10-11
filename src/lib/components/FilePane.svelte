@@ -362,6 +362,7 @@
   }
   .row.selected {
     background: var(--accent-soft);
+    box-shadow: inset 2px 0 0 var(--accent);
   }
   .list:focus-visible .row.selected {
     box-shadow: inset 0 0 0 1px var(--accent);

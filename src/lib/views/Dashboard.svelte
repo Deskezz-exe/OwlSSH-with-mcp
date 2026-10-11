@@ -74,6 +74,7 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    align-items: start;
     gap: 14px;
   }
   .empty {

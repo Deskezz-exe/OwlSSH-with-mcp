@@ -132,6 +132,10 @@
   .nav.active {
     background: var(--accent-soft);
     color: var(--text);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .nav.active .glyph {
+    color: var(--accent);
   }
   .glyph {
     width: 16px;

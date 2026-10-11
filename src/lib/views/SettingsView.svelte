@@ -221,29 +221,6 @@
     width: 110px;
     text-align: right;
   }
-  .segmented {
-    display: flex;
-    padding: 3px;
-    gap: 3px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-  }
-  .segmented button {
-    min-width: 84px;
-    height: 28px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-  .segmented button.on {
-    background: var(--raised);
-    color: var(--text);
-    box-shadow: inset 0 -2px 0 var(--accent);
-  }
   .shortcut {
     display: flex;
     align-items: flex-start;

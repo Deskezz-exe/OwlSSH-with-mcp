@@ -74,6 +74,7 @@
     background: var(--bg);
     border-color: var(--border);
     margin-bottom: -1px;
+    box-shadow: inset 0 2px 0 var(--accent);
   }
   .glyph {
     font-size: 11px;

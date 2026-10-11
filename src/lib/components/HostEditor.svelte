@@ -91,7 +91,7 @@
 
     <div class="field">
       <span>{t("editor.auth")}</span>
-      <div class="segmented" role="radiogroup">
+      <div class="segmented wide" role="radiogroup">
         {#each authKinds as kind}
           <button
             type="button"
@@ -176,6 +176,9 @@
     flex: 1;
     min-width: 0;
   }
+  .wide {
+    display: flex;
+  }
   .port {
     width: 96px;
   }
@@ -191,28 +194,6 @@
     gap: 8px;
     font-size: 13px;
     color: var(--text-dim);
-  }
-  .segmented {
-    display: flex;
-    padding: 3px;
-    gap: 3px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
-  }
-  .segmented button {
-    flex: 1;
-    height: 28px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-  .segmented button.on {
-    background: var(--raised);
-    color: var(--text);
-    box-shadow: inset 0 -2px 0 var(--accent);
   }
   .error {
     margin: 0;

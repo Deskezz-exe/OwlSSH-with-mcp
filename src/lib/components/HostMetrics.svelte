@@ -62,8 +62,9 @@
       </button>
       {#if showProcesses}
         <ul class="procs mono">
+          <li class="cols"><span>{t("metrics.colProcess")}</span><span>{t("metrics.colCpu")}</span><span>{t("metrics.colMem")}</span></li>
           {#each data.processes as p (p.pid)}
-            <li><span class="pname">{p.name}</span><span>{p.cpu.toFixed(1)}%</span><span class="dim">{p.mem.toFixed(1)}%</span></li>
+            <li><span class="pname" title={p.name}>{p.name}</span><span>{p.cpu.toFixed(1)}%</span><span class="dim">{p.mem.toFixed(1)}%</span></li>
           {/each}
         </ul>
       {/if}
@@ -158,7 +159,16 @@
     gap: 6px;
     padding: 2px 0;
   }
-  .procs li span:not(.pname) {
+  .procs .cols {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .procs li span:not(.pname):not(:first-child) {
     text-align: right;
   }
   .pname {
