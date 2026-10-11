@@ -6,3 +6,6 @@ mod handler;
 pub mod pool;
 
 pub use pool::{ConnectOptions, SshPool};
+
+#[cfg(test)]
+mod tests;
