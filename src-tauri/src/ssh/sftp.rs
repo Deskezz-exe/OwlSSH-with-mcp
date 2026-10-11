@@ -274,7 +274,7 @@ pub fn local_roots() -> Vec<String> {
 // ---------- Transfers ----------
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase", tag = "event")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "event")]
 pub enum TransferEvent {
     Started {
         job: u32,
@@ -575,5 +575,23 @@ mod tests {
             ["/var/www/site/css/app.css", "/var/www/site/index.html"]
         );
         assert_eq!(items.iter().map(|i| i.size).sum::<u64>(), 10);
+    }
+}
+
+#[cfg(test)]
+mod event_tests {
+    use super::TransferEvent;
+
+    #[test]
+    fn transfer_events_use_camel_case_fields() {
+        let json = serde_json::to_value(TransferEvent::Started {
+            job: 1,
+            files_total: 3,
+            bytes_total: 10,
+        })
+        .unwrap();
+        assert_eq!(json["event"], "started");
+        assert_eq!(json["filesTotal"], 3);
+        assert_eq!(json["bytesTotal"], 10);
     }
 }
