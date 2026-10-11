@@ -30,6 +30,7 @@ pub fn run() {
             commands::ssh::disconnect_host,
             commands::ssh::connected_hosts,
             commands::ssh::run_command,
+            commands::ssh::host_metrics,
             commands::terminal::terminal_open,
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,
