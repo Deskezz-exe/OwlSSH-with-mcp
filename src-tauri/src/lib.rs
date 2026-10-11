@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod hosts;
 mod secrets;
+mod settings;
 mod ssh;
 mod state;
 
@@ -10,6 +11,8 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             app.manage(state::AppState::new(data_dir)?);
@@ -31,6 +34,8 @@ pub fn run() {
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,
             commands::terminal::terminal_close,
+            commands::settings::get_settings,
+            commands::settings::save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running OwlSSH");
