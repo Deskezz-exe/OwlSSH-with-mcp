@@ -7,7 +7,7 @@ export interface Tab {
 }
 
 /** Fixed screens that are not tabs. */
-export type Screen = "dashboard" | "settings" | "mcp";
+export type Screen = "dashboard" | "settings" | "mcp" | "snippets";
 
 let counter = 0;
 

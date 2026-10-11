@@ -135,6 +135,21 @@ export interface ConfirmRequest {
   detail: string;
 }
 
+export interface Snippet {
+  id: string;
+  name: string;
+  command: string;
+  description: string;
+}
+
+export interface HostRun {
+  hostId: string;
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  error: string | null;
+}
+
 export interface TerminalExit {
   id: number;
   exitCode: number | null;
@@ -202,6 +217,12 @@ export const api = {
   mcpStatus: () => invoke<McpStatus>("mcp_status"),
   mcpActivity: (limit?: number) => invoke<AuditEntry[]>("mcp_activity", { limit: limit ?? null }),
   mcpConfirmAnswer: (id: number, approve: boolean) => invoke<void>("mcp_confirm_answer", { id, approve }),
+
+  listSnippets: () => invoke<Snippet[]>("list_snippets"),
+  saveSnippet: (input: Omit<Snippet, "id"> & { id: string | null }) => invoke<Snippet>("save_snippet", { input }),
+  deleteSnippet: (id: string) => invoke<void>("delete_snippet", { id }),
+  broadcastCommand: (hostIds: string[], command: string, results: Channel<HostRun>) =>
+    invoke<void>("broadcast_command", { hostIds, command, results }),
 
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),

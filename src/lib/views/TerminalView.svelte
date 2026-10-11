@@ -15,8 +15,9 @@
   import { terminalThemes } from "../terminal/themes";
   import { copyText, pasteText } from "../terminal/clipboard";
   import ContextMenu from "../components/ContextMenu.svelte";
+  import { palette, terminalPaste } from "../stores/snippets.svelte";
 
-  let { hostId, active }: { hostId: string; active: boolean } = $props();
+  let { tabId, hostId, active }: { tabId: string; hostId: string; active: boolean } = $props();
 
   let container: HTMLDivElement;
   let term = $state.raw<Terminal>();
@@ -78,10 +79,16 @@
       }
     });
 
+    terminalPaste.set(tabId, (text) => {
+      term?.paste(text);
+      term?.focus();
+    });
+
     await start();
   });
 
   onDestroy(() => {
+    terminalPaste.delete(tabId);
     unlisten?.();
     resizeObserver?.disconnect();
     if (sessionId !== null) api.terminalClose(sessionId);
@@ -125,6 +132,16 @@
   /** Copy and paste shortcuts from settings. Returning false keeps the keys from the shell. */
   function onKey(e: KeyboardEvent): boolean {
     if (e.type !== "keydown" || !keys) return true;
+    // Ctrl+K belongs to the shell here (kill line); Ctrl+Shift+K opens the palette.
+    if ((e.ctrlKey || e.metaKey) && e.code === "KeyK") {
+      if (e.shiftKey) {
+        e.preventDefault();
+        palette.open = true;
+        return false;
+      }
+      e.stopPropagation();
+      return true;
+    }
     if (matches(e, keys.copy)) {
       // A plain Ctrl+C binding still interrupts the shell when nothing is selected.
       if (!term?.hasSelection()) return true;

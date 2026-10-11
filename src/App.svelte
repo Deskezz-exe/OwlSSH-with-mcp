@@ -23,6 +23,9 @@
   import TextPrompt from "./lib/components/TextPrompt.svelte";
   import McpView from "./lib/views/McpView.svelte";
   import McpConfirm from "./lib/components/McpConfirm.svelte";
+  import SnippetsView from "./lib/views/SnippetsView.svelte";
+  import CommandPalette from "./lib/components/CommandPalette.svelte";
+  import { snippets, palette } from "./lib/stores/snippets.svelte";
 
   let ready = $state(false);
   let menu = $state<{ x: number; y: number; items: MenuItem[] } | null>(null);
@@ -35,6 +38,7 @@
     await hosts.load();
     metrics.start();
     mcp.start();
+    snippets.load();
     ready = true;
   });
 
@@ -84,10 +88,20 @@
     }
   }
 
+  /** Ctrl+K opens the command palette (inside a terminal it is Ctrl+Shift+K). */
+  function onkeydown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.code === "KeyK") {
+      e.preventDefault();
+      palette.open = !palette.open;
+    }
+  }
+
   function closeTab(tab: Tab) {
     tabs.close(tab.id);
   }
 </script>
+
+<svelte:window {onkeydown} />
 
 {#if ready}
   <div class="shell">
@@ -106,12 +120,14 @@
           <SettingsView />
         {:else if tabs.active === "mcp"}
           <McpView />
+        {:else if tabs.active === "snippets"}
+          <SnippetsView />
         {/if}
         <!-- Tabs stay mounted while hidden so their sessions keep running. -->
         {#each tabs.list as tab (tab.id)}
           <div class="pane" class:hidden={tabs.active !== tab.id}>
             {#if tab.kind === "terminal"}
-              <TerminalView hostId={tab.hostId} active={tabs.active === tab.id} />
+              <TerminalView tabId={tab.id} hostId={tab.hostId} active={tabs.active === tab.id} />
             {:else}
               <FilesView hostId={tab.hostId} active={tabs.active === tab.id} />
             {/if}
@@ -143,6 +159,7 @@
 <ConnectPrompt />
 <TextPrompt />
 <McpConfirm />
+<CommandPalette />
 <Toasts />
 
 <style>

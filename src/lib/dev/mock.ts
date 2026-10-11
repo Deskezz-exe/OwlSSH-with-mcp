@@ -194,6 +194,20 @@ export function installMock() {
           ];
         case "mcp_confirm_answer":
           return null;
+        case "list_snippets":
+          return [
+            { id: "s1", name: "Disk usage", command: "df -h", description: "" },
+            { id: "s2", name: "Restart a service", command: "sudo systemctl restart {{service}}", description: "" },
+          ];
+        case "save_snippet":
+          return { ...a.input, id: a.input.id ?? String(Date.now()) };
+        case "delete_snippet":
+          return null;
+        case "broadcast_command":
+          for (const id of a.hostIds) {
+            setTimeout(() => a.results.onmessage({ hostId: id, stdout: "Filesystem  Size  Used Avail Use% Mounted on\n/dev/vda1    40G   12G   26G  32% /", stderr: "", exitCode: 0, error: null }), 400 + Math.random() * 900);
+          }
+          return null;
         case "get_settings":
           return settings;
         case "save_settings":
