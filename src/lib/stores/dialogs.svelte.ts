@@ -7,9 +7,42 @@ export interface TextRequest {
   submit: string;
 }
 
+export interface ConflictRequest {
+  name: string;
+  isDir: boolean;
+  /** Where the name is taken. */
+  side: "remote" | "local";
+  /** A free name to suggest for renaming. */
+  suggestion: string;
+  /** How many more conflicts come after this one. */
+  remaining: number;
+  /** True when a name is already used at the destination. */
+  isTaken: (name: string) => Promise<boolean>;
+}
+
+export type ConflictAnswer =
+  | { action: "replace"; all: boolean }
+  | { action: "rename"; name: string; all: boolean }
+  | { action: "cancel"; all: boolean };
+
 class DialogsState {
   text = $state<TextRequest | null>(null);
+  conflict = $state<ConflictRequest | null>(null);
   private resolve: ((value: string | null) => void) | null = null;
+  private resolveConflict: ((value: ConflictAnswer) => void) | null = null;
+
+  askConflict(request: ConflictRequest): Promise<ConflictAnswer> {
+    this.resolveConflict?.({ action: "cancel", all: true });
+    this.conflict = request;
+    return new Promise((resolve) => (this.resolveConflict = resolve));
+  }
+
+  answerConflict(answer: ConflictAnswer) {
+    const resolve = this.resolveConflict;
+    this.resolveConflict = null;
+    this.conflict = null;
+    resolve?.(answer);
+  }
 
   askText(request: TextRequest): Promise<string | null> {
     this.resolve?.(null);

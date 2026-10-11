@@ -8,8 +8,11 @@
   import { toast } from "../stores/toast.svelte";
   import { api, errorText, type Entry, type TransferEvent } from "../api";
   import { formatBytes } from "../format";
+  import { shownAddress } from "../privacy";
   import { remoteJoin, localJoin } from "../paths";
+  import { resolveConflicts } from "../conflicts";
   import FilePane from "../components/FilePane.svelte";
+  import Icon, { iconForFile } from "../components/Icon.svelte";
   import ContextMenu, { type MenuItem } from "../components/ContextMenu.svelte";
 
   let { hostId, active }: { hostId: string; active: boolean } = $props();
@@ -50,9 +53,12 @@
         if (p.type === "over" || p.type === "enter") {
           hover = sideAt(p.position.x / devicePixelRatio, p.position.y / devicePixelRatio) === "remote" ? "remote" : null;
         } else if (p.type === "drop") {
-          const side = sideAt(p.position.x / devicePixelRatio, p.position.y / devicePixelRatio);
+          const x = p.position.x / devicePixelRatio;
+          const y = p.position.y / devicePixelRatio;
           hover = null;
-          if (side === "remote" && p.paths.length) upload(p.paths);
+          if (sideAt(x, y) === "remote" && p.paths.length) {
+            upload(p.paths.map((path) => ({ path, isDir: false })), folderAt(x, y) ?? undefined);
+          }
         } else {
           hover = null;
         }
@@ -93,17 +99,16 @@
     drag = null;
     hover = null;
     if (!to || to === from) return;
-    const paths = entries.map((x) => x.path);
-    if (to === "remote") upload(paths, folder ?? undefined);
-    else download(paths, folder ?? undefined);
+    const items = entries.map((x) => ({ path: x.path, isDir: x.kind === "dir" }));
+    if (to === "remote") upload(items, folder ?? undefined);
+    else download(items, folder ?? undefined);
   }
 
   function track(direction: Job["direction"], refreshSide: Side) {
     const channel = new Channel<TransferEvent>();
-    let job: Job | undefined;
     channel.onmessage = (ev) => {
       if (ev.event === "started") {
-        job = {
+        jobs.push({
           id: ev.job,
           direction,
           filesTotal: ev.filesTotal,
@@ -112,8 +117,7 @@
           bytesDone: 0,
           file: "",
           status: "running",
-        };
-        jobs.push(job);
+        });
         return;
       }
       const j = jobs.find((x) => x.id === ev.job);
@@ -124,40 +128,46 @@
         j.file = ev.file;
       } else {
         j.status = ev.event === "finished" ? "done" : ev.event === "failed" ? "failed" : "cancelled";
+        if (ev.event === "finished") j.bytesDone = j.bytesTotal;
         if (ev.event === "failed") toast.show(t("files.transferFailed", { message: ev.message }), "error");
         pane(refreshSide)?.refresh();
-        setTimeout(() => (jobs = jobs.filter((x) => x.id !== j.id)), ev.event === "failed" ? 8000 : 3000);
+        setTimeout(() => (jobs = jobs.filter((x) => x.id !== j.id)), ev.event === "failed" ? 8000 : 3500);
       }
     };
     return channel;
   }
 
-  async function upload(localPaths: string[], remoteDir?: string) {
+  type Item = { path: string; isDir: boolean };
+
+  async function upload(items: Item[], remoteDir?: string) {
     const dir = remoteDir ?? remotePane?.currentPath();
-    if (!dir) return;
+    if (!dir || !items.length) return;
     try {
-      await api.sftpUpload(hostId, localPaths, dir, track("up", "remote"));
+      const sources = await resolveConflicts(items, "remote", (n) => remoteJoin(dir, n), (paths) =>
+        api.sftpExists(hostId, paths),
+      );
+      if (sources) await api.sftpUpload(hostId, sources, dir, track("up", "remote"));
     } catch (e) {
       toast.show(errorText(e), "error");
     }
   }
 
-  async function download(remotePaths: string[], localDir?: string) {
+  async function download(items: Item[], localDir?: string) {
     const dir = localDir ?? localPane?.currentPath();
-    if (!dir) return;
+    if (!dir || !items.length) return;
     try {
-      await api.sftpDownload(hostId, remotePaths, dir, track("down", "local"));
+      const sources = await resolveConflicts(items, "local", (n) => localJoin(dir, n), (paths) => api.localExists(paths));
+      if (sources) await api.sftpDownload(hostId, sources, dir, track("down", "local"));
     } catch (e) {
       toast.show(errorText(e), "error");
     }
   }
 
   function transfer(from: Side, entries?: Entry[]) {
-    const items = entries ?? pane(from)?.selectedEntries() ?? [];
-    if (!items.length) return;
-    const paths = items.map((x) => x.path);
-    if (from === "local") upload(paths);
-    else download(paths);
+    const list = entries ?? pane(from)?.selectedEntries() ?? [];
+    const items = list.map((x) => ({ path: x.path, isDir: x.kind === "dir" }));
+    if (from === "local") upload(items);
+    else download(items);
   }
 
   async function newFolder(side: Side) {
@@ -238,6 +248,7 @@
   }
 
   const percentOf = (j: Job) => (j.bytesTotal ? Math.round((j.bytesDone / j.bytesTotal) * 100) : 100);
+  const fileName = (p: string) => p.split(/[\\/]/).pop() || "…";
 </script>
 
 <svelte:window {onmousemove} {onmouseup} />
@@ -255,35 +266,44 @@
       ondragout={(entries, e) => startDrag("local", entries, e)}
       oncontext={(entry, e) => contextMenu("local", entry, e)}
       onkeyaction={(action) => keyAction("local", action)}
+      onnewfolder={() => newFolder("local")}
     />
-    <div class="middle">
-      <button class="btn" title={t("files.upload")} aria-label={t("files.upload")} onclick={() => transfer("local")}>→</button>
-      <button class="btn" title={t("files.download")} aria-label={t("files.download")} onclick={() => transfer("remote")}>←</button>
+    <div class="rail">
+      <button class="round" title={t("files.upload")} aria-label={t("files.upload")} onclick={() => transfer("local")}>
+        <Icon name="right" size={17} />
+      </button>
+      <button class="round" title={t("files.download")} aria-label={t("files.download")} onclick={() => transfer("remote")}>
+        <Icon name="left" size={17} />
+      </button>
     </div>
     <FilePane
       bind:this={remotePane}
       side="remote"
-      title={`${t("files.remote")} · ${host?.name ?? ""}`}
+      title={host?.name ?? t("files.remote")}
+      subtitle={host ? `${host.username}@${shownAddress(host)}` : ""}
       load={(path) => api.sftpList(hostId, path)}
       dropTarget={hover === "remote"}
       onopenfile={(entry) => transfer("remote", [entry])}
       ondragout={(entries, e) => startDrag("remote", entries, e)}
       oncontext={(entry, e) => contextMenu("remote", entry, e)}
       onkeyaction={(action) => keyAction("remote", action)}
+      onnewfolder={() => newFolder("remote")}
     />
   </div>
 
   {#if jobs.length}
-    <ul class="jobs">
+    <section class="jobs" aria-label={t("files.transfers")}>
       {#each jobs as job (job.id)}
-        <li class={job.status}>
-          <span class="dir mono">{job.direction === "up" ? "→" : "←"}</span>
+        <div class="job {job.status}">
+          <span class="dir" title={job.direction === "up" ? t("files.upload") : t("files.download")}>
+            <Icon name={job.direction === "up" ? "right" : "left"} size={15} />
+          </span>
           <div class="info">
             <div class="line">
               <span class="file">
-                {#if job.status === "done"}{t("files.transferDone")}
+                {#if job.status === "done"}<Icon name="check" size={14} /> {t("files.transferDone")}
                 {:else if job.status === "cancelled"}{t("files.transferCancelled")}
-                {:else}{job.file.split(/[\\/]/).pop() || "…"}{/if}
+                {:else}<Icon name={iconForFile(fileName(job.file))} size={14} /> {fileName(job.file)}{/if}
               </span>
               <span class="stats">
                 {t("files.transferring", { done: job.filesDone, total: job.filesTotal })} ·
@@ -292,17 +312,21 @@
             </div>
             <span class="track"><span class="fill" style:width="{percentOf(job)}%"></span></span>
           </div>
+          <span class="pct mono">{percentOf(job)}%</span>
           {#if job.status === "running"}
-            <button class="btn ghost" onclick={() => api.sftpCancel(job.id)}>{t("files.cancel")}</button>
+            <button class="cancel" title={t("files.cancel")} aria-label={t("files.cancel")} onclick={() => api.sftpCancel(job.id)}>
+              <Icon name="x" size={14} />
+            </button>
           {/if}
-        </li>
+        </div>
       {/each}
-    </ul>
+    </section>
   {/if}
 </div>
 
 {#if drag}
-  <div class="ghost" style:left="{drag.x + 14}px" style:top="{drag.y + 10}px">
+  <div class="drag-ghost" style:left="{drag.x + 14}px" style:top="{drag.y + 10}px">
+    <Icon name={drag.entries.length === 1 && drag.entries[0].kind === "dir" ? "folder" : "file"} size={14} />
     {drag.entries.length === 1 ? drag.entries[0].name : t("files.dragCount", { count: drag.entries.length })}
   </div>
 {/if}
@@ -315,54 +339,79 @@
   .files {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     height: 100%;
-    padding: 12px;
+    padding: 14px;
   }
   .panes {
     flex: 1;
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: 8px;
+    gap: 10px;
   }
-  .middle {
+  .rail {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
+    gap: 10px;
   }
-  .middle .btn {
-    width: 34px;
-    padding: 0;
-    font-size: 15px;
+  .round {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.12s;
+  }
+  .round:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    transform: scale(1.06);
   }
   .jobs {
     display: grid;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    gap: 8px;
     max-height: 30%;
     overflow: auto;
   }
-  .jobs li {
+  .job {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 12px;
+    padding: 10px 12px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 10px;
+    animation: rise 0.18s ease-out;
   }
   .dir {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--accent-soft);
     color: var(--accent);
+  }
+  .done .dir {
+    background: color-mix(in srgb, var(--ok) 15%, transparent);
+    color: var(--ok);
+  }
+  .failed .dir,
+  .cancelled .dir {
+    background: var(--danger-soft);
+    color: var(--danger);
   }
   .info {
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 5px;
+    gap: 6px;
   }
   .line {
     display: flex;
@@ -371,23 +420,29 @@
     font-size: 12.5px;
   }
   .file {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: 500;
   }
   .stats {
     flex: none;
     color: var(--text-dim);
   }
   .track {
-    height: 4px;
-    border-radius: 2px;
+    height: 5px;
+    border-radius: 3px;
     background: var(--raised);
     overflow: hidden;
   }
   .fill {
     display: block;
     height: 100%;
+    border-radius: 3px;
     background: var(--accent);
     transition: width 0.2s;
   }
@@ -398,16 +453,45 @@
   .cancelled .fill {
     background: var(--danger);
   }
-  .ghost {
+  .pct {
+    width: 40px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .cancel {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-faint);
+  }
+  .cancel:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .drag-ghost {
     position: fixed;
     z-index: 80;
-    padding: 5px 10px;
-    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
     background: var(--accent);
     color: var(--accent-text);
     font-size: 12.5px;
     font-weight: 500;
     pointer-events: none;
     box-shadow: var(--shadow);
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
   }
 </style>

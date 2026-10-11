@@ -21,6 +21,7 @@
   import SettingsView from "./lib/views/SettingsView.svelte";
   import FilesView from "./lib/views/FilesView.svelte";
   import TextPrompt from "./lib/components/TextPrompt.svelte";
+  import ConflictDialog from "./lib/components/ConflictDialog.svelte";
   import McpView from "./lib/views/McpView.svelte";
   import McpConfirm from "./lib/components/McpConfirm.svelte";
   import SnippetsView from "./lib/views/SnippetsView.svelte";
@@ -158,6 +159,7 @@
 {/if}
 <ConnectPrompt />
 <TextPrompt />
+<ConflictDialog />
 <McpConfirm />
 <CommandPalette />
 <Toasts />
