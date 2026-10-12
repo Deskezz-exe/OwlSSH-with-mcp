@@ -172,6 +172,30 @@ export interface HostRun {
   error: string | null;
 }
 
+export type TunnelKind = "local" | "remote";
+
+export interface Tunnel {
+  id: string;
+  hostId: string;
+  name: string;
+  kind: TunnelKind;
+  /** Where to listen: here for local, on the server for remote. */
+  bindHost: string;
+  bindPort: number;
+  /** Where connections go: seen from the server for local, from here for remote. */
+  targetHost: string;
+  targetPort: number;
+}
+
+export type TunnelInput = Omit<Tunnel, "id"> & { id: string | null };
+
+export interface TunnelStatus {
+  id: string;
+  running: boolean;
+  port: number | null;
+  error: string | null;
+}
+
 export interface KeySetup {
   host: Host;
   keyPath: string;
@@ -220,6 +244,12 @@ export const api = {
     invoke<void>("connect_host", { hostId, options: options ?? null }),
   disconnectHost: (hostId: string) => invoke<void>("disconnect_host", { hostId }),
   setupKey: (hostId: string) => invoke<KeySetup>("setup_key", { hostId }),
+  listTunnels: () => invoke<Tunnel[]>("list_tunnels"),
+  tunnelStatuses: () => invoke<TunnelStatus[]>("tunnel_statuses"),
+  saveTunnel: (input: TunnelInput) => invoke<Tunnel>("save_tunnel", { input }),
+  deleteTunnel: (id: string) => invoke<void>("delete_tunnel", { id }),
+  startTunnel: (id: string) => invoke<number>("start_tunnel", { id }),
+  stopTunnel: (id: string) => invoke<void>("stop_tunnel", { id }),
   connectedHosts: () => invoke<string[]>("connected_hosts"),
   runCommand: (hostId: string, command: string) =>
     invoke<ExecOutput>("run_command", { hostId, command }),

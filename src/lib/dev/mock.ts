@@ -4,7 +4,7 @@
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
 import type { Channel } from "@tauri-apps/api/core";
-import type { Host, Settings } from "../api";
+import type { Host, Settings, Tunnel } from "../api";
 
 const hosts: Host[] = [
   host("1", "web-prod", "198.51.100.24", "deploy", ["prod", "web"], true),
@@ -42,6 +42,15 @@ let settings: Settings = {
 };
 
 const connected = new Set<string>();
+const tunnels: Tunnel[] = [
+  { id: "t1", hostId: "2", name: "Postgres", kind: "local", bindHost: "127.0.0.1", bindPort: 15432, targetHost: "localhost", targetPort: 5432 },
+  { id: "t2", hostId: "1", name: "Grafana", kind: "local", bindHost: "127.0.0.1", bindPort: 3000, targetHost: "localhost", targetPort: 3000 },
+  { id: "t3", hostId: "3", name: "", kind: "remote", bindHost: "127.0.0.1", bindPort: 9000, targetHost: "127.0.0.1", targetPort: 5173 },
+];
+const tunnelState = new Map<string, { id: string; running: boolean; port: number | null; error: string | null }>([
+  ["t2", { id: "t2", running: true, port: 3000, error: null }],
+  ["t3", { id: "t3", running: false, port: null, error: "the SSH connection closed" }],
+]);
 const terminals = new Map<number, { output: Channel<ArrayBuffer>; prompt: string; line: string }>();
 let nextTerminal = 1;
 
@@ -266,6 +275,31 @@ export function installMock() {
         case "save_settings":
           settings = a.settings;
           return settings;
+        case "list_tunnels":
+          return tunnels;
+        case "tunnel_statuses":
+          return [...tunnelState.values()];
+        case "save_tunnel": {
+          const saved = { ...a.input, id: a.input.id ?? String(Date.now()) };
+          const i = tunnels.findIndex((x) => x.id === saved.id);
+          if (i >= 0) tunnels[i] = saved;
+          else tunnels.push(saved);
+          return saved;
+        }
+        case "delete_tunnel":
+          tunnels.splice(tunnels.findIndex((x) => x.id === a.id), 1);
+          tunnelState.delete(a.id);
+          return null;
+        case "start_tunnel": {
+          const tunnel = tunnels.find((x) => x.id === a.id)!;
+          tunnelState.set(a.id, { id: a.id, running: true, port: tunnel.bindPort, error: null });
+          await emit("tunnels-changed");
+          return tunnel.bindPort;
+        }
+        case "stop_tunnel":
+          tunnelState.delete(a.id);
+          await emit("tunnels-changed");
+          return null;
         case "setup_key": {
           const h = hosts.find((h) => h.id === a.hostId)!;
           h.auth = "key";

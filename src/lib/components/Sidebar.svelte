@@ -2,6 +2,7 @@
   import { t } from "../i18n/index.svelte";
   import { hosts } from "../stores/hosts.svelte";
   import { tabs } from "../stores/tabs.svelte";
+  import { tunnels } from "../stores/tunnels.svelte";
   import { shownAddress } from "../privacy";
   import OwlEyes from "./OwlEyes.svelte";
   import type { Host } from "../api";
@@ -45,6 +46,10 @@
     </button>
     <button class="nav" class:active={tabs.active === "snippets"} onclick={() => tabs.show("snippets")}>
       <span class="glyph">❯</span>{t("nav.snippets")}
+    </button>
+    <button class="nav" class:active={tabs.active === "tunnels"} onclick={() => tabs.show("tunnels")}>
+      <span class="glyph">⇆</span>{t("nav.tunnels")}
+      {#if tunnels.runningCount}<span class="count">{tunnels.runningCount}</span>{/if}
     </button>
     <button class="nav" class:active={tabs.active === "mcp"} onclick={() => tabs.show("mcp")}>
       <span class="glyph">◎</span>{t("nav.mcp")}
@@ -128,6 +133,17 @@
   .nav:hover {
     background: var(--hover);
     color: var(--text);
+  }
+  .count {
+    margin-left: auto;
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+    color: var(--accent-text);
+    background: var(--ok);
   }
   .nav.active {
     background: var(--accent-soft);

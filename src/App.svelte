@@ -25,6 +25,8 @@
   import McpView from "./lib/views/McpView.svelte";
   import McpConfirm from "./lib/components/McpConfirm.svelte";
   import SnippetsView from "./lib/views/SnippetsView.svelte";
+  import TunnelsView from "./lib/views/TunnelsView.svelte";
+  import { tunnels } from "./lib/stores/tunnels.svelte";
   import CommandPalette from "./lib/components/CommandPalette.svelte";
   import { snippets, palette } from "./lib/stores/snippets.svelte";
 
@@ -40,6 +42,7 @@
     metrics.start();
     mcp.start();
     snippets.load();
+    tunnels.load();
     ready = true;
   });
 
@@ -152,6 +155,8 @@
           <McpView />
         {:else if tabs.active === "snippets"}
           <SnippetsView />
+        {:else if tabs.active === "tunnels"}
+          <TunnelsView />
         {/if}
         <!-- Tabs stay mounted while hidden so their sessions keep running. -->
         {#each tabs.list as tab (tab.id)}
