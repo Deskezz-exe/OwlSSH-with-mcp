@@ -36,6 +36,8 @@ let settings: Settings = {
   terminal: { fontSize: 14, fontFamily: "", scrollback: 10000, cursorBlink: true, copyOnSelect: false, confirmClose: true, autoReconnect: true, rightClick: "menu" },
   keybindings: { copy: "Ctrl+Shift+C", paste: "Ctrl+Shift+V" },
   streamerMode: false,
+  closeToTray: true,
+  trayHintShown: false,
   mcp: { enabled: true, port: 47821, confirmDangerous: true, fullAccess: false, token: "3f9c2a7be14d4c0f9a51d6e2b8c07a44" },
 };
 

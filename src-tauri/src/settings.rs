@@ -19,6 +19,10 @@ pub struct Settings {
     pub keybindings: Keybindings,
     /// Replaces real addresses on screen with placeholders.
     pub streamer_mode: bool,
+    /// The window close button hides the app to the tray instead of quitting.
+    pub close_to_tray: bool,
+    /// The one-time note about the tray was shown.
+    pub tray_hint_shown: bool,
     pub mcp: McpSettings,
 }
 
@@ -68,6 +72,8 @@ impl Default for Settings {
             terminal: TerminalSettings::default(),
             keybindings: Keybindings::default(),
             streamer_mode: false,
+            close_to_tray: true,
+            tray_hint_shown: false,
             mcp: McpSettings::default(),
         }
     }

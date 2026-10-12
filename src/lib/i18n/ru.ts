@@ -115,6 +115,8 @@ const ru: Record<MessageKey, string> = {
   "settings.theme.system": "Системная",
   "settings.streamer": "Режим стримера",
   "settings.streamerHint": "Скрывает настоящие адреса на экране, пока вы записываете или показываете его.",
+  "settings.closeToTray": "Работать в трее",
+  "settings.closeToTrayHint": "Крестик прячет окно, сессии и MCP-сервер продолжают работать. Полный выход через меню в трее.",
   "settings.terminal": "Терминал",
   "settings.fontSize": "Размер шрифта",
   "settings.fontSizeHint": "В терминале: Ctrl+колёсико или Ctrl+= и Ctrl+-, Ctrl+0 сбрасывает.",

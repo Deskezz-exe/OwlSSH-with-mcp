@@ -74,6 +74,8 @@ export interface Settings {
   };
   keybindings: { copy: string; paste: string };
   streamerMode: boolean;
+  closeToTray: boolean;
+  trayHintShown: boolean;
   mcp: { enabled: boolean; port: number; confirmDangerous: boolean; fullAccess: boolean; token: string };
 }
 

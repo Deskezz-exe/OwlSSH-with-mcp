@@ -7,12 +7,17 @@ mod settings;
 mod snippets;
 mod ssh;
 mod state;
+mod tray;
 
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // A second launch (desktop icon while hidden in the tray) shows the running app.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            tray::show_window(app)
+        }))
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -24,8 +29,10 @@ pub fn run() {
             app.state::<state::AppState>()
                 .mcp
                 .restart(app.handle(), &mcp_settings);
+            tray::create(app.handle())?;
             Ok(())
         })
+        .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             commands::hosts::list_hosts,
             commands::hosts::save_host,

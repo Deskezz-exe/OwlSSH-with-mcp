@@ -55,6 +55,19 @@
 
     <label class="row">
       <span class="label">
+        {t("settings.closeToTray")}
+        <small>{t("settings.closeToTrayHint")}</small>
+      </span>
+      <input
+        type="checkbox"
+        class="switch"
+        checked={s.closeToTray}
+        onchange={(e) => settings.update((x) => (x.closeToTray = e.currentTarget.checked))}
+      />
+    </label>
+
+    <label class="row">
+      <span class="label">
         {t("settings.streamer")}
         <small>{t("settings.streamerHint")}</small>
       </span>

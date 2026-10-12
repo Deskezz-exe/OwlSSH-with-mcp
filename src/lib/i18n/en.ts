@@ -115,6 +115,8 @@ const en = {
   "settings.theme.system": "System",
   "settings.streamer": "Streamer mode",
   "settings.streamerHint": "Hide real addresses on screen while you record or share it.",
+  "settings.closeToTray": "Keep running in the tray",
+  "settings.closeToTrayHint": "Closing the window hides it; sessions and the MCP server keep working. Quit from the tray menu.",
   "settings.terminal": "Terminal",
   "settings.fontSize": "Font size",
   "settings.fontSizeHint": "In a terminal: Ctrl+wheel or Ctrl+= and Ctrl+-, Ctrl+0 resets.",

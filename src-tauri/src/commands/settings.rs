@@ -20,9 +20,14 @@ pub fn save_settings(
     if settings.mcp.token.is_empty() {
         settings.mcp.token = previous.mcp.token.clone();
     }
+    // Set by the backend; the UI may still hold the old value.
+    settings.tray_hint_shown |= previous.tray_hint_shown;
     let saved = state.settings.save(settings)?;
     if saved.mcp != previous.mcp {
         state.mcp.restart(&app, &saved.mcp);
+    }
+    if saved.locale != previous.locale {
+        crate::tray::set_locale(&app, &saved.locale);
     }
     Ok(saved)
 }
