@@ -88,6 +88,7 @@ const ru: Record<MessageKey, string> = {
   "terminal.paste": "Вставить",
   "terminal.selectAll": "Выделить всё",
   "terminal.clear": "Очистить",
+  "terminal.openLink": "Ctrl+клик, чтобы открыть ссылку",
 
   "settings.title": "Настройки",
   "settings.general": "Общие",

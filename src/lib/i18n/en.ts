@@ -88,6 +88,7 @@ const en = {
   "terminal.paste": "Paste",
   "terminal.selectAll": "Select all",
   "terminal.clear": "Clear",
+  "terminal.openLink": "Ctrl+click to open the link",
 
   "settings.title": "Settings",
   "settings.general": "General",

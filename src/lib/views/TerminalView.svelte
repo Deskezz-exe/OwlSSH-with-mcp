@@ -3,6 +3,8 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import { WebglAddon } from "@xterm/addon-webgl";
+  import { Unicode11Addon } from "@xterm/addon-unicode11";
+  import { WebLinksAddon } from "@xterm/addon-web-links";
   import { Channel } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import "@xterm/xterm/css/xterm.css";
@@ -14,6 +16,7 @@
   import { matches } from "../keybindings";
   import { terminalThemes } from "../terminal/themes";
   import { copyText, pasteText } from "../terminal/clipboard";
+  import { openLink } from "../terminal/links";
   import ContextMenu from "../components/ContextMenu.svelte";
   import { palette, terminalPaste } from "../stores/snippets.svelte";
 
@@ -29,6 +32,8 @@
   let ended = $state<{ code: number | null } | null>(null);
   let failure = $state("");
   let menu = $state<{ x: number; y: number } | null>(null);
+  /** Hint next to a hovered link. */
+  let linkHint = $state<{ x: number; y: number } | null>(null);
 
   const termSettings = $derived(settings.value?.terminal);
   const keys = $derived(settings.value?.keybindings);
@@ -51,6 +56,21 @@
     });
     fit = new FitAddon();
     term.loadAddon(fit);
+    // Unicode 11 widths keep emoji and CJK text aligned in prompts and TUIs.
+    term.loadAddon(new Unicode11Addon());
+    term.unicode.activeVersion = "11";
+    // Ctrl+click opens a link, a plain click still selects text.
+    term.loadAddon(
+      new WebLinksAddon(
+        (e, uri) => {
+          if (e.ctrlKey || e.metaKey) openLink(uri);
+        },
+        {
+          hover: (e) => (linkHint = { x: e.clientX, y: e.clientY }),
+          leave: () => (linkHint = null),
+        },
+      ),
+    );
     term.open(container);
     loadWebgl(term);
     fit.fit();
@@ -209,6 +229,12 @@
 <div class="wrap">
   <div class="term" bind:this={container} {oncontextmenu} role="presentation"></div>
 
+  {#if linkHint}
+    <div class="link-hint" style:left="{linkHint.x + 12}px" style:top="{linkHint.y + 16}px">
+      {t("terminal.openLink")}
+    </div>
+  {/if}
+
   {#if ended || failure}
     <div class="banner" class:error={!!failure}>
       <span>
@@ -248,6 +274,18 @@
   }
   .term :global(.xterm-viewport) {
     background: transparent !important;
+  }
+  .link-hint {
+    position: fixed;
+    z-index: 20;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    pointer-events: none;
   }
   .banner {
     position: absolute;
