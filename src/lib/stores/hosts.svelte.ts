@@ -81,7 +81,11 @@ class HostsState {
    * cancelled or the connection failed (the error is kept in `errors`).
    */
   async connect(id: string): Promise<boolean> {
-    if (this.stateOf(id) === "connected") return true;
+    // The connection may have dropped while nothing used it; ask the backend.
+    if (this.stateOf(id) === "connected") {
+      if ((await api.connectedHosts()).includes(id)) return true;
+      this.status[id] = "idle";
+    }
     this.status[id] = "connecting";
     delete this.errors[id];
     const options: ConnectOptions = {};
