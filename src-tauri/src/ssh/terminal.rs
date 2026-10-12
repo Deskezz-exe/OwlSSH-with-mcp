@@ -38,6 +38,9 @@ struct Session {
 pub struct TerminalExit {
     pub id: u32,
     pub exit_code: Option<u32>,
+    /// The channel went away without an exit status and without us closing it:
+    /// a dropped network or a killed server process. The UI may reconnect.
+    pub lost: bool,
 }
 
 #[derive(Default)]
@@ -79,6 +82,7 @@ impl TerminalManager {
             // Keeps the connection alive for as long as the shell runs.
             let _conn = conn;
             let mut exit_code = None;
+            let mut closed_by_us = false;
             loop {
                 tokio::select! {
                     biased;
@@ -92,6 +96,7 @@ impl TerminalManager {
                             let _ = writer.window_change(cols, rows, 0, 0).await;
                         }
                         Some(Command::Close) | None => {
+                            closed_by_us = true;
                             let _ = writer.eof().await;
                             let _ = writer.close().await;
                             break;
@@ -125,7 +130,8 @@ impl TerminalManager {
                 }
             }
             sessions.lock().unwrap().remove(&id);
-            on_exit(TerminalExit { id, exit_code });
+            let lost = exit_code.is_none() && !closed_by_us;
+            on_exit(TerminalExit { id, exit_code, lost });
         });
         Ok(id)
     }

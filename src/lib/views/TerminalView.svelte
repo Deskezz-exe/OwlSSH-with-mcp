@@ -35,7 +35,12 @@
   let unlisten: UnlistenFn | undefined;
   let resizeObserver: ResizeObserver | undefined;
 
-  let ended = $state<{ code: number | null } | null>(null);
+  let ended = $state<{ code: number | null; lost: boolean } | null>(null);
+  /** Pending automatic reconnect after a dropped connection. */
+  let retry = $state<{ attempt: number; left: number } | null>(null);
+  let retryTimer = 0;
+  /** Seconds to wait before each automatic attempt; then it gives up. */
+  const RETRY_DELAYS = [2, 4, 8, 15, 30, 30, 30, 30, 30, 30];
   let failure = $state("");
   let menu = $state<{ x: number; y: number } | null>(null);
   /** Hint next to a hovered link. */
@@ -96,7 +101,11 @@
     fit.fit();
 
     term.attachCustomKeyEventHandler(onKey);
-    term.onData((data) => sessionId !== null && api.terminalWrite(sessionId, data));
+    term.onData((data) => {
+      if (sessionId !== null) api.terminalWrite(sessionId, data);
+      // Enter on an ended session starts a new one.
+      else if (data === "\r" && (ended || failure)) reconnect();
+    });
     term.onBinary((data) => sessionId !== null && api.terminalWrite(sessionId, data));
     term.onResize(({ cols, rows }) => sessionId !== null && api.terminalResize(sessionId, cols, rows));
     term.onTitleChange((title) => tabs.setTitle(tabId, title));
@@ -118,8 +127,9 @@
       if (payload.id === sessionId) {
         sessionId = null;
         tabs.setLive(tabId, false);
-        ended = { code: payload.exitCode };
+        ended = { code: payload.exitCode, lost: payload.lost };
         hosts.load();
+        if (payload.lost && settings.value?.terminal.autoReconnect) scheduleRetry(0);
       }
     });
 
@@ -136,6 +146,7 @@
     unlisten?.();
     resizeObserver?.disconnect();
     clearTimeout(saveFontTimer);
+    clearInterval(retryTimer);
     if (sessionId !== null) api.terminalClose(sessionId);
     term?.dispose();
   });
@@ -151,7 +162,8 @@
     }
   }
 
-  async function start() {
+  /** Opens a shell. `again` keeps the old output and marks where the new session starts. */
+  async function start(again = false) {
     if (!term) return;
     ended = null;
     failure = "";
@@ -160,6 +172,14 @@
         failure = hosts.errors[hostId] ?? t("status.error");
         return;
       }
+      if (again) {
+        // Leave whatever full-screen mode the old shell was in (vim, htop, mouse
+        // tracking), then draw a divider so the old output stays readable.
+        // 1049l also restores the saved cursor, so only send it from the alternate screen.
+        if (term.buffer.active.type === "alternate") term.write("\x1b[?1049l");
+        term.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?2004l\x1b[?1l\x1b[!p");
+        term.write(`\r\n\x1b[2m── ${t("terminal.newSession")} ──\x1b[0m\r\n`);
+      }
       const output = new Channel<ArrayBuffer>();
       output.onmessage = (data) => term?.write(new Uint8Array(data));
       sessionId = await api.terminalOpen(hostId, term.cols, term.rows, output);
@@ -167,12 +187,33 @@
       if (active) term.focus();
     } catch (e) {
       failure = errorText(e);
+      hosts.load();
     }
   }
 
+  /** Reconnects now; while auto-reconnecting, a failure schedules the next attempt. */
   async function reconnect() {
-    term?.reset();
-    await start();
+    const attempt = retry?.attempt;
+    cancelRetry();
+    await start(true);
+    // A cancelled password prompt leaves the host idle: stop asking.
+    if (attempt !== undefined && failure && hosts.stateOf(hostId) !== "idle") scheduleRetry(attempt + 1);
+  }
+
+  function scheduleRetry(attempt: number) {
+    cancelRetry();
+    if (attempt >= RETRY_DELAYS.length) return;
+    retry = { attempt, left: RETRY_DELAYS[attempt] };
+    retryTimer = window.setInterval(() => {
+      if (!retry) return;
+      retry.left -= 1;
+      if (retry.left <= 0) reconnect();
+    }, 1000);
+  }
+
+  function cancelRetry() {
+    clearInterval(retryTimer);
+    retry = null;
   }
 
   /** Copy and paste shortcuts from settings. Returning false keeps the keys from the shell. */
@@ -317,8 +358,12 @@
   {#if ended || failure}
     <div class="banner" class:error={!!failure}>
       <span>
-        {#if failure}{failure}{:else if ended?.code !== null && ended?.code !== undefined}{t("terminal.closedCode", { code: ended.code })}{:else}{t("terminal.closed")}{/if}
+        {#if failure}{failure}{:else if ended?.lost}{t("terminal.lost")}{:else if ended?.code !== null && ended?.code !== undefined}{t("terminal.closedCode", { code: ended.code })}{:else}{t("terminal.closed")}{/if}
       </span>
+      {#if retry}
+        <span class="retry">{t("terminal.retryIn", { seconds: retry.left })}</span>
+        <button class="btn ghost" onclick={cancelRetry}>{t("common.cancel")}</button>
+      {/if}
       <button class="btn primary" onclick={reconnect}>{t("terminal.reconnect")}</button>
     </div>
   {/if}
@@ -382,7 +427,11 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
   }
-  .banner.error span {
+  .banner .retry {
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .banner.error span:first-child {
     color: var(--danger);
   }
   .banner span {

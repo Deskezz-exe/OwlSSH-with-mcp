@@ -138,6 +138,16 @@
     </label>
 
     <label class="row">
+      <span class="label">{t("settings.autoReconnect")}</span>
+      <input
+        type="checkbox"
+        class="switch"
+        checked={s.terminal.autoReconnect}
+        onchange={(e) => settings.update((x) => (x.terminal.autoReconnect = e.currentTarget.checked))}
+      />
+    </label>
+
+    <label class="row">
       <span class="label">{t("settings.confirmClose")}</span>
       <input
         type="checkbox"

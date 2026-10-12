@@ -33,6 +33,8 @@ pub struct TerminalSettings {
     pub copy_on_select: bool,
     /// Ask before closing a tab whose shell is still running.
     pub confirm_close: bool,
+    /// Reopen the shell by itself when the connection drops.
+    pub auto_reconnect: bool,
     /// `paste` pastes on right click, `menu` opens a context menu.
     pub right_click: String,
 }
@@ -80,6 +82,7 @@ impl Default for TerminalSettings {
             cursor_blink: true,
             copy_on_select: false,
             confirm_close: true,
+            auto_reconnect: true,
             right_click: "menu".into(),
         }
     }

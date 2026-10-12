@@ -69,6 +69,7 @@ export interface Settings {
     cursorBlink: boolean;
     copyOnSelect: boolean;
     confirmClose: boolean;
+    autoReconnect: boolean;
     rightClick: "menu" | "paste";
   };
   keybindings: { copy: string; paste: string };
@@ -172,6 +173,8 @@ export interface HostRun {
 export interface TerminalExit {
   id: number;
   exitCode: number | null;
+  /** The connection dropped; reconnecting makes sense. */
+  lost: boolean;
 }
 
 /** The error object every command rejects with. */

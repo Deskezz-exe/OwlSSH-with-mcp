@@ -33,7 +33,7 @@ function host(id: string, name: string, hostname: string, username: string, tags
 let settings: Settings = {
   locale: "en",
   theme: "dark",
-  terminal: { fontSize: 14, fontFamily: "", scrollback: 10000, cursorBlink: true, copyOnSelect: false, confirmClose: true, rightClick: "menu" },
+  terminal: { fontSize: 14, fontFamily: "", scrollback: 10000, cursorBlink: true, copyOnSelect: false, confirmClose: true, autoReconnect: true, rightClick: "menu" },
   keybindings: { copy: "Ctrl+Shift+C", paste: "Ctrl+Shift+V" },
   streamerMode: false,
   mcp: { enabled: true, port: 47821, confirmDangerous: true, fullAccess: false, token: "3f9c2a7be14d4c0f9a51d6e2b8c07a44" },
@@ -170,6 +170,12 @@ export function installMock() {
           for (const ch of a.data as string) {
             if (ch === "\r") {
               const cmd = term.line.trim();
+              if (cmd === "!drop") {
+                // Dev only: act like the network went away.
+                terminals.delete(a.id);
+                await emit("terminal-exit", { id: a.id, exitCode: null, lost: true });
+                return null;
+              }
               const reply = cmd ? (shellReplies[cmd] ?? `${cmd.split(" ")[0]}: command not found`) : null;
               send(term.output, `\r\n${reply === null ? "" : reply + "\r\n"}${term.prompt}`);
               term.line = "";
@@ -189,7 +195,7 @@ export function installMock() {
           return null;
         case "terminal_close":
           terminals.delete(a.id);
-          await emit("terminal-exit", { id: a.id, exitCode: 0 });
+          await emit("terminal-exit", { id: a.id, exitCode: 0, lost: false });
           return null;
         case "local_roots":
           return ["C:\\", "D:\\"];

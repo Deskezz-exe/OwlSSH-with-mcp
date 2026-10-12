@@ -19,7 +19,12 @@ class HostsState {
 
   async load() {
     this.list = await api.listHosts();
-    for (const id of await api.connectedHosts()) this.status[id] = "connected";
+    const live = new Set(await api.connectedHosts());
+    for (const id of live) this.status[id] = "connected";
+    // Connections that dropped since the last look.
+    for (const [id, state] of Object.entries(this.status)) {
+      if (state === "connected" && !live.has(id)) this.status[id] = "idle";
+    }
   }
 
   byId(id: string | null | undefined): Host | undefined {
