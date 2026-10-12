@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use super::{normalize_tags, Host, HostInput};
+use super::{normalize_tags, AuthKind, Host, HostInput};
 use crate::error::{AppError, AppResult};
 use crate::secrets;
 
@@ -141,6 +141,14 @@ impl HostStore {
         self.update(id, |h| h.favorite = favorite)
     }
 
+    /// Switches the host to key login.
+    pub fn use_key(&self, id: &str, key_path: &str) -> AppResult<Host> {
+        self.update(id, |h| {
+            h.auth = AuthKind::Key;
+            h.key_path = Some(key_path.to_string());
+        })
+    }
+
     /// Records that a password was saved to the keychain from the connect dialog.
     pub fn mark_password(&self, id: &str, has_password: bool) -> AppResult<Host> {
         self.update(id, |h| h.has_password = has_password)
@@ -195,7 +203,6 @@ fn write_atomic(path: &Path, hosts: &[Host]) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hosts::AuthKind;
 
     fn input(name: &str) -> HostInput {
         HostInput {

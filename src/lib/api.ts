@@ -172,6 +172,13 @@ export interface HostRun {
   error: string | null;
 }
 
+export interface KeySetup {
+  host: Host;
+  keyPath: string;
+  /** A new key was created; otherwise an existing one was reused. */
+  created: boolean;
+}
+
 export interface TerminalExit {
   id: number;
   exitCode: number | null;
@@ -212,6 +219,7 @@ export const api = {
   connectHost: (hostId: string, options?: ConnectOptions) =>
     invoke<void>("connect_host", { hostId, options: options ?? null }),
   disconnectHost: (hostId: string) => invoke<void>("disconnect_host", { hostId }),
+  setupKey: (hostId: string) => invoke<KeySetup>("setup_key", { hostId }),
   connectedHosts: () => invoke<string[]>("connected_hosts"),
   runCommand: (hostId: string, command: string) =>
     invoke<ExecOutput>("run_command", { hostId, command }),

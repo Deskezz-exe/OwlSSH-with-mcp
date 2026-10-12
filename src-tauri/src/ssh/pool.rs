@@ -99,6 +99,24 @@ impl SshPool {
         }
     }
 
+    /// Logs in to `host` on a separate connection and closes it again; proves
+    /// that its credentials work without touching the shared connection.
+    pub async fn verify_login(&self, hosts: &HostStore, host: &Host) -> AppResult<()> {
+        let via = match &host.jump_host_id {
+            Some(jump_id) => Some(
+                self.connect_inner(hosts, jump_id, &ConnectOptions::default(), 1)
+                    .await?,
+            ),
+            None => None,
+        };
+        let conn = self.open(host, via, &ConnectOptions::default()).await?;
+        let _ = conn
+            .handle
+            .disconnect(russh::Disconnect::ByApplication, "", "en")
+            .await;
+        Ok(())
+    }
+
     fn connect_inner<'a>(
         &'a self,
         hosts: &'a HostStore,

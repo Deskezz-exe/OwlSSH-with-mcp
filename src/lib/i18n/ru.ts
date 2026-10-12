@@ -38,6 +38,14 @@ const ru: Record<MessageKey, string> = {
   "hosts.unfavorite": "Убрать из избранного",
   "hosts.via": "через {name}",
 
+  "keys.menu": "Настроить вход по ключу",
+  "keys.title": "Вход по ключу",
+  "keys.confirm": "OwlSSH добавит ключ с этого компьютера в ~/.ssh/authorized_keys пользователя {target}, проверит, что вход работает, и переключит сервер на вход по ключу. Если в ~/.ssh ещё нет ключа ed25519, будет создан новый. Больше на сервере ничего не меняется.",
+  "keys.ok": "Настроить",
+  "keys.working": "Настраиваю вход по ключу…",
+  "keys.doneCreated": "Вход по ключу включён. Новый ключ: {path}",
+  "keys.doneReused": "Вход по ключу включён, ключ {path}",
+
   "editor.titleNew": "Новый сервер",
   "editor.titleEdit": "Изменить сервер",
   "editor.name": "Название",

@@ -266,6 +266,13 @@ export function installMock() {
         case "save_settings":
           settings = a.settings;
           return settings;
+        case "setup_key": {
+          const h = hosts.find((h) => h.id === a.hostId)!;
+          h.auth = "key";
+          h.keyPath = String.raw`C:\Users\dev\.ssh\id_ed25519`;
+          await new Promise((r) => setTimeout(r, 800));
+          return { host: h, keyPath: h.keyPath, created: true };
+        }
         case "plugin:dialog|save":
           return `C:\\Users\\dev\\${a.options?.defaultPath ?? "file.txt"}`;
         case "save_terminal_output":

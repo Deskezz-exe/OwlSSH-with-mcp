@@ -60,6 +60,9 @@
           action: () => hosts.toggleFavorite(host),
           separatorBefore: true,
         },
+        ...(host.auth === "password"
+          ? [{ label: t("keys.menu"), action: () => setupKey(host) }]
+          : []),
         { label: t("hosts.edit"), action: () => (editing = host) },
         { label: t("hosts.delete"), action: () => remove(host), danger: true },
       ],
@@ -73,6 +76,23 @@
   async function disconnect(host: Host) {
     tabs.closeHost(host.id);
     await hosts.disconnect(host.id);
+  }
+
+  async function setupKey(host: Host) {
+    const ok = await ask(t("keys.confirm", { target: `${host.username}@${host.name}` }), {
+      title: t("keys.title"),
+      kind: "info",
+      okLabel: t("keys.ok"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!ok || !(await hosts.connect(host.id))) return;
+    toast.show(t("keys.working"));
+    try {
+      const result = await hosts.setupKey(host.id);
+      toast.show(t(result.created ? "keys.doneCreated" : "keys.doneReused", { path: result.keyPath }), "info", 6000);
+    } catch (e) {
+      toast.show(errorText(e), "error", 8000);
+    }
   }
 
   async function remove(host: Host) {

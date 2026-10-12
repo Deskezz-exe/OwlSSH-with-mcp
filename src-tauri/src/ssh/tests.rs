@@ -1,16 +1,18 @@
 //! End-to-end tests of the SSH engine against an in-process russh server:
-//! host key trust, password auth, exec, jump hosts and interactive shells.
+//! host key trust, password auth, exec, jump hosts, interactive shells and
+//! one-click key setup.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use russh::keys::{decode_secret_key, PrivateKey};
+use russh::keys::{decode_secret_key, PrivateKey, PublicKey};
 use russh::server::{self, Auth, Msg, Session};
 use russh::{Channel, ChannelId};
 use tokio::net::{TcpListener, TcpStream};
 
 use super::exec::exec;
+use super::keysetup;
 use super::terminal::TerminalManager;
 use super::{ConnectOptions, SshPool};
 use crate::error::AppError;
@@ -35,10 +37,20 @@ EXQyubeF5dU+mqS01y46AAAADW93bHNzaC10ZXN0LWI=
 
 const PASSWORD: &str = "hunter2";
 
-/// Session channels, kept until the client asks for a shell on one.
+/// Session channels, kept until the client asks for a shell on one, and the
+/// public keys added through the key setup command (shared by all sessions).
 #[derive(Clone, Default)]
 struct TestServer {
     channels: Arc<std::sync::Mutex<HashMap<ChannelId, Channel<Msg>>>>,
+    authorized: Arc<std::sync::Mutex<Vec<String>>>,
+}
+
+/// The base64 part of an OpenSSH public key line.
+fn key_blob(line: &str) -> String {
+    line.split_whitespace()
+        .nth(1)
+        .unwrap_or_default()
+        .to_string()
 }
 
 impl server::Handler for TestServer {
@@ -50,6 +62,17 @@ impl server::Handler for TestServer {
         } else {
             Auth::reject()
         })
+    }
+
+    async fn auth_publickey(&mut self, _user: &str, key: &PublicKey) -> Result<Auth, Self::Error> {
+        let blob = key_blob(&key.to_openssh().unwrap_or_default());
+        let known = self
+            .authorized
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|line| key_blob(line) == blob);
+        Ok(if known { Auth::Accept } else { Auth::reject() })
     }
 
     async fn channel_open_session(
@@ -70,7 +93,13 @@ impl server::Handler for TestServer {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         session.channel_success(channel)?;
-        let out = format!("ran: {}\n", String::from_utf8_lossy(data));
+        let command = String::from_utf8_lossy(data);
+        // Plays the part of the shell for the key setup command.
+        if let Some(rest) = command.split(r"printf '%s\n' '").nth(1) {
+            let line = rest.split('\'').next().unwrap_or_default().to_string();
+            self.authorized.lock().unwrap().push(line);
+        }
+        let out = format!("ran: {command}\n");
         session.data(channel, out.into_bytes())?;
         session.exit_status_request(channel, 0)?;
         session.eof(channel)?;
@@ -157,12 +186,16 @@ async fn start_server(host_key: PrivateKey) -> u16 {
     });
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
+    let authorized = Arc::<std::sync::Mutex<Vec<String>>>::default();
     tokio::spawn(async move {
         while let Ok((socket, _)) = listener.accept().await {
             let config = config.clone();
+            let handler = TestServer {
+                authorized: authorized.clone(),
+                ..Default::default()
+            };
             tokio::spawn(async move {
-                if let Ok(session) = server::run_stream(config, socket, TestServer::default()).await
-                {
+                if let Ok(session) = server::run_stream(config, socket, handler).await {
                     let _ = session.await;
                 }
             });
@@ -374,4 +407,31 @@ async fn terminal_echoes_input_and_reports_exit() {
         terminals.write(id, b"x".to_vec()).is_err(),
         "closed terminals reject input"
     );
+}
+
+#[tokio::test]
+async fn sets_up_key_login_and_checks_it() {
+    let port = start_server(key(KEY_A)).await;
+    let f = fixture();
+    let host = add_host(&f.store, "a", "127.0.0.1", port, None);
+    trust(&f, &host, &with_password()).await;
+
+    let ssh_dir = tempfile::tempdir().unwrap();
+    let local = keysetup::ensure_key(ssh_dir.path()).unwrap();
+    let mut with_key = host.clone();
+    with_key.auth = AuthKind::Key;
+    with_key.key_path = Some(local.path.display().to_string());
+
+    // Before the key is installed the server turns it away.
+    let err = f
+        .pool
+        .verify_login(&f.store, &with_key)
+        .await
+        .err()
+        .unwrap();
+    assert!(matches!(err, AppError::Auth(_)), "got {err:?}");
+
+    let conn = f.pool.existing(&host.id).unwrap();
+    keysetup::install(&conn, &local.public_line).await.unwrap();
+    f.pool.verify_login(&f.store, &with_key).await.unwrap();
 }

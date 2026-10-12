@@ -3300,6 +3300,7 @@ dependencies = [
  "dirs",
  "glob",
  "keyring",
+ "rand",
  "regex",
  "rmcp",
  "russh",

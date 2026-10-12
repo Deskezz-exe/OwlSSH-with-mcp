@@ -38,6 +38,14 @@ const en = {
   "hosts.unfavorite": "Remove from favorites",
   "hosts.via": "via {name}",
 
+  "keys.menu": "Set up key login",
+  "keys.title": "Log in with a key",
+  "keys.confirm": "OwlSSH adds a key from this computer to ~/.ssh/authorized_keys of {target}, checks that it works and switches the server to key login. If ~/.ssh has no ed25519 key yet, a new one is created. Nothing else on the server changes.",
+  "keys.ok": "Set up",
+  "keys.working": "Setting up key login…",
+  "keys.doneCreated": "Key login is on. New key: {path}",
+  "keys.doneReused": "Key login is on, using {path}",
+
   "editor.titleNew": "New server",
   "editor.titleEdit": "Edit server",
   "editor.name": "Name",

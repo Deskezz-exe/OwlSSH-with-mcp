@@ -131,7 +131,11 @@ impl TerminalManager {
             }
             sessions.lock().unwrap().remove(&id);
             let lost = exit_code.is_none() && !closed_by_us;
-            on_exit(TerminalExit { id, exit_code, lost });
+            on_exit(TerminalExit {
+                id,
+                exit_code,
+                lost,
+            });
         });
         Ok(id)
     }

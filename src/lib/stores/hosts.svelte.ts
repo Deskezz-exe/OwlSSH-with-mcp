@@ -50,6 +50,14 @@ class HostsState {
     delete this.status[id];
   }
 
+  /** Installs a local key on the server and switches the host to it. */
+  async setupKey(id: string) {
+    const result = await api.setupKey(id);
+    const i = this.list.findIndex((h) => h.id === id);
+    if (i >= 0) this.list[i] = result.host;
+    return result;
+  }
+
   async toggleFavorite(host: Host) {
     const updated = await api.setFavorite(host.id, !host.favorite);
     const i = this.list.findIndex((h) => h.id === host.id);
