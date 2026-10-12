@@ -68,6 +68,7 @@ export interface Settings {
     scrollback: number;
     cursorBlink: boolean;
     copyOnSelect: boolean;
+    confirmClose: boolean;
     rightClick: "menu" | "paste";
   };
   keybindings: { copy: string; paste: string };

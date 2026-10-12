@@ -97,7 +97,16 @@
     }
   }
 
-  function closeTab(tab: Tab) {
+  async function closeTab(tab: Tab) {
+    if (tab.live && settings.value?.terminal.confirmClose) {
+      const ok = await ask(t("tabs.closeConfirm", { name: hosts.byId(tab.hostId)?.name ?? "" }), {
+        title: t("tabs.close"),
+        kind: "warning",
+        okLabel: t("common.close"),
+        cancelLabel: t("common.cancel"),
+      });
+      if (!ok) return;
+    }
     tabs.close(tab.id);
   }
 </script>

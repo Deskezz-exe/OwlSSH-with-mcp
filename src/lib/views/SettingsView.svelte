@@ -137,6 +137,16 @@
       />
     </label>
 
+    <label class="row">
+      <span class="label">{t("settings.confirmClose")}</span>
+      <input
+        type="checkbox"
+        class="switch"
+        checked={s.terminal.confirmClose}
+        onchange={(e) => settings.update((x) => (x.terminal.confirmClose = e.currentTarget.checked))}
+      />
+    </label>
+
     <div class="row">
       <span class="label">{t("settings.rightClick")}</span>
       <div class="segmented">

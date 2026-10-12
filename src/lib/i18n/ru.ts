@@ -11,6 +11,7 @@ const ru: Record<MessageKey, string> = {
   "nav.expand": "Развернуть панель",
 
   "tabs.close": "Закрыть вкладку",
+  "tabs.closeConfirm": "Шелл на {name} ещё работает. Закрыть вкладку и завершить его?",
   "tabs.terminal": "Терминал",
   "tabs.files": "Файлы",
 
@@ -116,6 +117,7 @@ const ru: Record<MessageKey, string> = {
   "settings.scrollback": "Сколько строк хранить в истории",
   "settings.cursorBlink": "Мигание курсора",
   "settings.copyOnSelect": "Копировать текст сразу при выделении",
+  "settings.confirmClose": "Спрашивать перед закрытием работающей сессии",
   "settings.rightClick": "Правая кнопка мыши в терминале",
   "settings.rightClick.menu": "Показать меню",
   "settings.rightClick.paste": "Вставить текст",

@@ -117,6 +117,7 @@
     unlisten = await listen<TerminalExit>("terminal-exit", ({ payload }) => {
       if (payload.id === sessionId) {
         sessionId = null;
+        tabs.setLive(tabId, false);
         ended = { code: payload.exitCode };
         hosts.load();
       }
@@ -162,6 +163,7 @@
       const output = new Channel<ArrayBuffer>();
       output.onmessage = (data) => term?.write(new Uint8Array(data));
       sessionId = await api.terminalOpen(hostId, term.cols, term.rows, output);
+      tabs.setLive(tabId, true);
       if (active) term.focus();
     } catch (e) {
       failure = errorText(e);

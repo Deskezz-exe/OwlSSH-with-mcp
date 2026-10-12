@@ -8,6 +8,8 @@ export interface Tab {
   title?: string;
   /** The shell rang the bell while the tab was in the background. */
   bell?: boolean;
+  /** A shell is running in the tab. */
+  live?: boolean;
 }
 
 /** Fixed screens that are not tabs. */
@@ -49,6 +51,11 @@ class TabsState {
 
   show(screen: Screen | string) {
     this.active = screen;
+  }
+
+  setLive(id: string, live: boolean) {
+    const tab = this.list.find((t) => t.id === id);
+    if (tab) tab.live = live;
   }
 
   /** The user is looking at the tab now. */

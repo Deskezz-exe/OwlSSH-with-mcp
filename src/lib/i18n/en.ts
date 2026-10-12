@@ -11,6 +11,7 @@ const en = {
   "nav.expand": "Expand sidebar",
 
   "tabs.close": "Close tab",
+  "tabs.closeConfirm": "The shell on {name} is still running. Close the tab and end it?",
   "tabs.terminal": "Terminal",
   "tabs.files": "Files",
 
@@ -116,6 +117,7 @@ const en = {
   "settings.scrollback": "Lines kept in history",
   "settings.cursorBlink": "Blinking cursor",
   "settings.copyOnSelect": "Copy text as soon as it is selected",
+  "settings.confirmClose": "Ask before closing a running session",
   "settings.rightClick": "Right click in the terminal",
   "settings.rightClick.menu": "Show menu",
   "settings.rightClick.paste": "Paste",
