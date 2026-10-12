@@ -4,6 +4,10 @@ export interface Tab {
   id: string;
   kind: TabKind;
   hostId: string;
+  /** What the shell put in the window title, minus the user@host part. */
+  title?: string;
+  /** The shell rang the bell while the tab was in the background. */
+  bell?: boolean;
 }
 
 /** Fixed screens that are not tabs. */
@@ -45,6 +49,23 @@ class TabsState {
 
   show(screen: Screen | string) {
     this.active = screen;
+  }
+
+  /** The user is looking at the tab now. */
+  seen(id: string) {
+    const tab = this.list.find((t) => t.id === id);
+    if (tab?.bell) tab.bell = false;
+  }
+
+  setTitle(id: string, title: string) {
+    const tab = this.list.find((t) => t.id === id);
+    // Prompts usually set "user@host: ~/dir"; the host is already on the tab.
+    if (tab) tab.title = title.replace(/^[^@\s]+@[^:\s]+:\s*/, "").trim() || undefined;
+  }
+
+  ring(id: string) {
+    const tab = this.list.find((t) => t.id === id);
+    if (tab && this.active !== id) tab.bell = true;
   }
 }
 

@@ -21,6 +21,7 @@
   import ContextMenu from "../components/ContextMenu.svelte";
   import TerminalSearch from "../components/TerminalSearch.svelte";
   import { palette, terminalPaste } from "../stores/snippets.svelte";
+  import { tabs } from "../stores/tabs.svelte";
 
   let { tabId, hostId, active }: { tabId: string; hostId: string; active: boolean } = $props();
 
@@ -98,6 +99,8 @@
     term.onData((data) => sessionId !== null && api.terminalWrite(sessionId, data));
     term.onBinary((data) => sessionId !== null && api.terminalWrite(sessionId, data));
     term.onResize(({ cols, rows }) => sessionId !== null && api.terminalResize(sessionId, cols, rows));
+    term.onTitleChange((title) => tabs.setTitle(tabId, title));
+    term.onBell(() => tabs.ring(tabId));
     term.onSelectionChange(() => {
       if (settings.value?.terminal.copyOnSelect && term?.hasSelection()) copyText(term.getSelection());
     });
@@ -273,6 +276,7 @@
   // Become visible: refit to the panel and take keyboard focus.
   $effect(() => {
     if (active && term) {
+      tabs.seen(tabId);
       requestAnimationFrame(() => {
         fit?.fit();
         term?.focus();

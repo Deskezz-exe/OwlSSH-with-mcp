@@ -54,6 +54,7 @@ const shellReplies: Record<string, string> = {
     "0d6b7f4a9c13   redis:7          Up 14 days    6379/tcp               cache",
   ].join("\r\n"),
   "df -h /": "Filesystem  Size  Used Avail Use% Mounted on\r\n/dev/vda1    80G   23G   54G  30% /",
+  "tput bel": "\x07",
   ls: "\x1b[34mapp\x1b[0m  \x1b[34mlogs\x1b[0m  docker-compose.yml  README.md",
 };
 const encoder = new TextEncoder();
@@ -160,7 +161,7 @@ export function installMock() {
           const h = hosts.find((h) => h.id === a.hostId)!;
           const prompt = `\x1b[32m${h.username}@${h.name}\x1b[0m:\x1b[34m~\x1b[0m$ `;
           terminals.set(id, { output: a.output, prompt, line: "" });
-          setTimeout(() => send(a.output, `Welcome to Ubuntu 24.04 LTS\r\n\r\n${prompt}`));
+          setTimeout(() => send(a.output, `\x1b]0;${h.username}@${h.name}: ~/app\x07Welcome to Ubuntu 24.04 LTS\r\n\r\n${prompt}`));
           return id;
         }
         case "terminal_write": {
