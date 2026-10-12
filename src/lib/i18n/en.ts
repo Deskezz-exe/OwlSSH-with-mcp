@@ -11,6 +11,7 @@ const en = {
   "nav.expand": "Expand sidebar",
 
   "tabs.close": "Close tab",
+  "tabs.bell": "The shell rang the bell",
   "tabs.closeConfirm": "The shell on {name} is still running. Close the tab and end it?",
   "tabs.terminal": "Terminal",
   "tabs.files": "Files",

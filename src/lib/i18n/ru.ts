@@ -11,6 +11,7 @@ const ru: Record<MessageKey, string> = {
   "nav.expand": "Развернуть панель",
 
   "tabs.close": "Закрыть вкладку",
+  "tabs.bell": "Шелл подал сигнал",
   "tabs.closeConfirm": "Шелл на {name} ещё работает. Закрыть вкладку и завершить его?",
   "tabs.terminal": "Терминал",
   "tabs.files": "Файлы",

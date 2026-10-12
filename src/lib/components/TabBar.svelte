@@ -19,6 +19,7 @@
       <div
         class="tab"
         class:active={tabs.active === tab.id}
+        class:bell={tab.bell}
         role="tab"
         tabindex="0"
         aria-selected={tabs.active === tab.id}
@@ -26,12 +27,13 @@
         onkeydown={(e) => e.key === "Enter" && tabs.show(tab.id)}
         onauxclick={(e) => e.button === 1 && onclose(tab)}
       >
-        <span class="glyph mono" class:bell={tab.bell} title={t(tab.kind === "terminal" ? "tabs.terminal" : "tabs.files")}>
+        <span class="glyph mono" title={t(tab.kind === "terminal" ? "tabs.terminal" : "tabs.files")}>
           {glyph[tab.kind]}
         </span>
         <span class="title" title={sub ? `${host?.name ?? ""} · ${sub}` : undefined}>
           {host?.name ?? "…"}{#if sub}<span class="sub">· {sub}</span>{/if}
         </span>
+        {#if tab.bell}<span class="bell-dot" title={t("tabs.bell")}></span>{/if}
         <OwlEyes state={hosts.stateOf(tab.hostId)} size={14} />
         <button
           class="close"
@@ -85,9 +87,21 @@
     font-size: 11px;
     color: var(--accent);
   }
-  .glyph.bell {
-    color: var(--warn);
-    animation: ring 1s ease-in-out 3;
+  /* Stays until the tab is opened, so a bell that rang while you were away is not missed. */
+  .tab.bell {
+    color: var(--text);
+    background: var(--accent-soft);
+  }
+  .tab.bell .glyph {
+    animation: ring 1.2s ease-in-out infinite;
+  }
+  .bell-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
   @keyframes ring {
     50% {

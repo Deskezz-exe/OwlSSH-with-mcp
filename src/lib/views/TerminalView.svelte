@@ -47,6 +47,9 @@
   let menu = $state<{ x: number; y: number } | null>(null);
   /** Hint next to a hovered link. */
   let linkHint = $state<{ x: number; y: number } | null>(null);
+  /** Visual bell in the tab you are looking at. */
+  let flash = $state(false);
+  let flashTimer = 0;
 
   const termSettings = $derived(settings.value?.terminal);
   const keys = $derived(settings.value?.keybindings);
@@ -111,7 +114,10 @@
     term.onBinary((data) => sessionId !== null && api.terminalWrite(sessionId, data));
     term.onResize(({ cols, rows }) => sessionId !== null && api.terminalResize(sessionId, cols, rows));
     term.onTitleChange((title) => tabs.setTitle(tabId, title));
-    term.onBell(() => tabs.ring(tabId));
+    term.onBell(() => {
+      tabs.ring(tabId);
+      if (active) flashBell();
+    });
     term.onSelectionChange(() => {
       if (settings.value?.terminal.copyOnSelect && term?.hasSelection()) copyText(term.getSelection());
     });
@@ -149,6 +155,7 @@
     resizeObserver?.disconnect();
     clearTimeout(saveFontTimer);
     clearInterval(retryTimer);
+    clearTimeout(flashTimer);
     if (sessionId !== null) api.terminalClose(sessionId);
     term?.dispose();
   });
@@ -314,6 +321,12 @@
     }
   }
 
+  function flashBell() {
+    flash = true;
+    clearTimeout(flashTimer);
+    flashTimer = window.setTimeout(() => (flash = false), 180);
+  }
+
   function openSearch() {
     if (searching) searchBar?.focus();
     else searching = true;
@@ -377,6 +390,7 @@
 
 <div class="wrap">
   <div class="term" bind:this={container} {oncontextmenu} role="presentation"></div>
+  {#if flash}<div class="flash"></div>{/if}
 
   {#if searching && search}
     <TerminalSearch bind:this={searchBar} addon={search} onclose={closeSearch} />
@@ -433,6 +447,13 @@
   }
   .term :global(.xterm-viewport) {
     background: transparent !important;
+  }
+  .flash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 2px var(--accent);
+    background: var(--accent-soft);
   }
   .link-hint {
     position: fixed;
