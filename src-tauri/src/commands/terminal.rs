@@ -48,3 +48,10 @@ pub async fn terminal_resize(
 pub async fn terminal_close(state: State<'_, AppState>, id: u32) -> AppResult<()> {
     state.terminals.close(id)
 }
+
+/// Writes the terminal text the user chose to keep to a file they picked in the save dialog.
+#[tauri::command]
+pub async fn save_terminal_output(path: String, text: String) -> AppResult<()> {
+    tokio::fs::write(path, text).await?;
+    Ok(())
+}

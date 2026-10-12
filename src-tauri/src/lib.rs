@@ -43,6 +43,7 @@ pub fn run() {
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,
             commands::terminal::terminal_close,
+            commands::terminal::save_terminal_output,
             commands::sftp::sftp_list,
             commands::sftp::sftp_mkdir,
             commands::sftp::sftp_rename,

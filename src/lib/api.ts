@@ -221,6 +221,7 @@ export const api = {
   terminalResize: (id: number, cols: number, rows: number) =>
     invoke<void>("terminal_resize", { id, cols, rows }),
   terminalClose: (id: number) => invoke<void>("terminal_close", { id }),
+  saveTerminalOutput: (path: string, text: string) => invoke<void>("save_terminal_output", { path, text }),
 
   sftpList: (hostId: string, path?: string) => invoke<Listing>("sftp_list", { hostId, path: path ?? null }),
   sftpMkdir: (hostId: string, path: string) => invoke<void>("sftp_mkdir", { hostId, path }),

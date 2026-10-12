@@ -264,6 +264,11 @@ export function installMock() {
         case "save_settings":
           settings = a.settings;
           return settings;
+        case "plugin:dialog|save":
+          return `C:\\Users\\dev\\${a.options?.defaultPath ?? "file.txt"}`;
+        case "save_terminal_output":
+          console.info("mock: saved", a.path, JSON.stringify(a.text));
+          return null;
         case "plugin:dialog|message": {
           const ok = a.buttons?.OkCancelCustom?.[0] ?? "Yes";
           return window.confirm(a.message) ? ok : null;

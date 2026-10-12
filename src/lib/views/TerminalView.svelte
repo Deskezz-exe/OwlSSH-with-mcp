@@ -7,6 +7,7 @@
   import { WebLinksAddon } from "@xterm/addon-web-links";
   import { SearchAddon } from "@xterm/addon-search";
   import { Channel } from "@tauri-apps/api/core";
+  import { save } from "@tauri-apps/plugin-dialog";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import "@xterm/xterm/css/xterm.css";
 
@@ -22,6 +23,7 @@
   import TerminalSearch from "../components/TerminalSearch.svelte";
   import { palette, terminalPaste } from "../stores/snippets.svelte";
   import { tabs } from "../stores/tabs.svelte";
+  import { toast } from "../stores/toast.svelte";
 
   let { tabId, hostId, active }: { tabId: string; hostId: string; active: boolean } = $props();
 
@@ -281,6 +283,37 @@
     saveFontTimer = window.setTimeout(() => settings.update((x) => (x.terminal.fontSize = size)), 400);
   }
 
+  /** The scrollback and the screen as plain text, without trailing blank lines. */
+  function outputText(): string {
+    const buffer = term!.buffer.normal;
+    const lines: string[] = [];
+    for (let i = 0; i < buffer.length; i++) {
+      const line = buffer.getLine(i);
+      if (!line) continue;
+      // Wrapped rows continue the previous line.
+      if (line.isWrapped && lines.length) lines[lines.length - 1] += line.translateToString(true);
+      else lines.push(line.translateToString(true));
+    }
+    while (lines.length && !lines[lines.length - 1]) lines.pop();
+    return lines.join("\n") + "\n";
+  }
+
+  async function saveOutput() {
+    if (!term) return;
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    const name = `${hosts.byId(hostId)?.name ?? "terminal"}-${stamp}.txt`.replace(/[\\/:*?"<>|]/g, "_");
+    try {
+      const path = await save({ defaultPath: name, filters: [{ name: "Text", extensions: ["txt", "log"] }] });
+      if (!path) return;
+      await api.saveTerminalOutput(path, outputText());
+      toast.show(t("terminal.saved"));
+    } catch (e) {
+      toast.show(errorText(e), "error");
+    }
+  }
+
   function openSearch() {
     if (searching) searchBar?.focus();
     else searching = true;
@@ -382,6 +415,7 @@
       { label: `${t("terminal.paste")}  ·  ${keys?.paste ?? ""}`, action: paste },
       { label: `${t("terminal.find")}  ·  Ctrl+Shift+F`, action: openSearch, separatorBefore: true },
       { label: t("terminal.selectAll"), action: () => term?.selectAll() },
+      { label: t("terminal.saveOutput"), action: saveOutput },
       { label: t("terminal.clear"), action: () => term?.clear() },
     ]}
   />

@@ -94,6 +94,8 @@ const ru: Record<MessageKey, string> = {
   "terminal.clear": "Очистить",
   "terminal.openLink": "Ctrl+клик, чтобы открыть ссылку",
   "terminal.find": "Найти",
+  "terminal.saveOutput": "Сохранить вывод в файл…",
+  "terminal.saved": "Вывод сохранён",
 
   "search.placeholder": "Поиск в выводе",
   "search.none": "Ничего",

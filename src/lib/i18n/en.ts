@@ -94,6 +94,8 @@ const en = {
   "terminal.clear": "Clear",
   "terminal.openLink": "Ctrl+click to open the link",
   "terminal.find": "Find",
+  "terminal.saveOutput": "Save output to file…",
+  "terminal.saved": "Output saved",
 
   "search.placeholder": "Find in output",
   "search.none": "No results",
