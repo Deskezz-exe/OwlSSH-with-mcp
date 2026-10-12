@@ -89,6 +89,15 @@ const en = {
   "terminal.selectAll": "Select all",
   "terminal.clear": "Clear",
   "terminal.openLink": "Ctrl+click to open the link",
+  "terminal.find": "Find",
+
+  "search.placeholder": "Find in output",
+  "search.none": "No results",
+  "search.case": "Match case",
+  "search.regex": "Regular expression",
+  "search.previous": "Previous match (Shift+Enter)",
+  "search.next": "Next match (Enter)",
+  "search.close": "Close (Esc)",
 
   "settings.title": "Settings",
   "settings.general": "General",

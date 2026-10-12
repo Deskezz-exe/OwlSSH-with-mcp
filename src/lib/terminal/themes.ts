@@ -1,4 +1,5 @@
 import type { ITheme } from "@xterm/xterm";
+import type { ISearchOptions } from "@xterm/addon-search";
 
 // ANSI palettes tuned to the app themes: the amber accent doubles as the cursor.
 export const terminalThemes: Record<"dark" | "light", ITheme> = {
@@ -47,5 +48,21 @@ export const terminalThemes: Record<"dark" | "light", ITheme> = {
     brightMagenta: "#a25dd0",
     brightCyan: "#2aa1b3",
     brightWhite: "#fffaf0",
+  },
+};
+
+/** Search highlights; the addon wants #RRGGBB colors. */
+export const searchColors: Record<"dark" | "light", NonNullable<ISearchOptions["decorations"]>> = {
+  dark: {
+    matchBackground: "#4a3a17",
+    matchOverviewRuler: "#8a6a2a",
+    activeMatchBackground: "#b07d1f",
+    activeMatchColorOverviewRuler: "#f0b03f",
+  },
+  light: {
+    matchBackground: "#f1dcae",
+    matchOverviewRuler: "#c9a35c",
+    activeMatchBackground: "#e0a94a",
+    activeMatchColorOverviewRuler: "#b2700f",
   },
 };

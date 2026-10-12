@@ -5,6 +5,7 @@
   import { WebglAddon } from "@xterm/addon-webgl";
   import { Unicode11Addon } from "@xterm/addon-unicode11";
   import { WebLinksAddon } from "@xterm/addon-web-links";
+  import { SearchAddon } from "@xterm/addon-search";
   import { Channel } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import "@xterm/xterm/css/xterm.css";
@@ -18,6 +19,7 @@
   import { copyText, pasteText } from "../terminal/clipboard";
   import { openLink } from "../terminal/links";
   import ContextMenu from "../components/ContextMenu.svelte";
+  import TerminalSearch from "../components/TerminalSearch.svelte";
   import { palette, terminalPaste } from "../stores/snippets.svelte";
 
   let { tabId, hostId, active }: { tabId: string; hostId: string; active: boolean } = $props();
@@ -25,6 +27,9 @@
   let container: HTMLDivElement;
   let term = $state.raw<Terminal>();
   let fit: FitAddon | undefined;
+  let search = $state.raw<SearchAddon>();
+  let searchBar = $state<ReturnType<typeof TerminalSearch>>();
+  let searching = $state(false);
   let sessionId: number | null = null;
   let unlisten: UnlistenFn | undefined;
   let resizeObserver: ResizeObserver | undefined;
@@ -71,6 +76,8 @@
         },
       ),
     );
+    search = new SearchAddon({ highlightLimit: 2000 });
+    term.loadAddon(search);
     term.open(container);
     loadWebgl(term);
     fit.fit();
@@ -162,6 +169,11 @@
       e.stopPropagation();
       return true;
     }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.code === "KeyF") {
+      e.preventDefault();
+      openSearch();
+      return false;
+    }
     if (matches(e, keys.copy)) {
       // A plain Ctrl+C binding still interrupts the shell when nothing is selected.
       if (!term?.hasSelection()) return true;
@@ -175,6 +187,16 @@
       return false;
     }
     return true;
+  }
+
+  function openSearch() {
+    if (searching) searchBar?.focus();
+    else searching = true;
+  }
+
+  function closeSearch() {
+    searching = false;
+    term?.focus();
   }
 
   function copySelection() {
@@ -229,6 +251,10 @@
 <div class="wrap">
   <div class="term" bind:this={container} {oncontextmenu} role="presentation"></div>
 
+  {#if searching && search}
+    <TerminalSearch bind:this={searchBar} addon={search} onclose={closeSearch} />
+  {/if}
+
   {#if linkHint}
     <div class="link-hint" style:left="{linkHint.x + 12}px" style:top="{linkHint.y + 16}px">
       {t("terminal.openLink")}
@@ -256,7 +282,8 @@
     items={[
       { label: `${t("terminal.copy")}  ·  ${keys?.copy ?? ""}`, action: copySelection, disabled: !term?.hasSelection() },
       { label: `${t("terminal.paste")}  ·  ${keys?.paste ?? ""}`, action: paste },
-      { label: t("terminal.selectAll"), action: () => term?.selectAll(), separatorBefore: true },
+      { label: `${t("terminal.find")}  ·  Ctrl+Shift+F`, action: openSearch, separatorBefore: true },
+      { label: t("terminal.selectAll"), action: () => term?.selectAll() },
       { label: t("terminal.clear"), action: () => term?.clear() },
     ]}
   />

@@ -89,6 +89,15 @@ const ru: Record<MessageKey, string> = {
   "terminal.selectAll": "Выделить всё",
   "terminal.clear": "Очистить",
   "terminal.openLink": "Ctrl+клик, чтобы открыть ссылку",
+  "terminal.find": "Найти",
+
+  "search.placeholder": "Поиск в выводе",
+  "search.none": "Ничего",
+  "search.case": "Учитывать регистр",
+  "search.regex": "Регулярное выражение",
+  "search.previous": "Предыдущее (Shift+Enter)",
+  "search.next": "Следующее (Enter)",
+  "search.close": "Закрыть (Esc)",
 
   "settings.title": "Настройки",
   "settings.general": "Общие",
