@@ -71,7 +71,10 @@
     <h2>{t("settings.terminal")}</h2>
 
     <label class="row">
-      <span class="label">{t("settings.fontSize")}</span>
+      <span class="label">
+        {t("settings.fontSize")}
+        <small>{t("settings.fontSizeHint")}</small>
+      </span>
       <input
         class="input number"
         type="number"
@@ -80,6 +83,21 @@
         value={s.terminal.fontSize}
         onchange={(e) =>
           settings.update((x) => (x.terminal.fontSize = Math.min(28, Math.max(9, Number(e.currentTarget.value) || 14))))}
+      />
+    </label>
+
+    <label class="row">
+      <span class="label">
+        {t("settings.fontFamily")}
+        <small>{t("settings.fontFamilyHint")}</small>
+      </span>
+      <input
+        class="input font"
+        type="text"
+        placeholder="JetBrains Mono"
+        spellcheck="false"
+        value={s.terminal.fontFamily}
+        onchange={(e) => settings.update((x) => (x.terminal.fontFamily = e.currentTarget.value.trim()))}
       />
     </label>
 
@@ -216,6 +234,9 @@
   }
   .hint {
     margin: 0 0 4px;
+  }
+  .font {
+    width: 220px;
   }
   .number {
     width: 110px;

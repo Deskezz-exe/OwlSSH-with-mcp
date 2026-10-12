@@ -26,6 +26,8 @@ pub struct Settings {
 #[serde(rename_all = "camelCase", default)]
 pub struct TerminalSettings {
     pub font_size: u16,
+    /// A font installed on the system; empty means the bundled JetBrains Mono.
+    pub font_family: String,
     pub scrollback: u32,
     pub cursor_blink: bool,
     pub copy_on_select: bool,
@@ -71,6 +73,7 @@ impl Default for TerminalSettings {
     fn default() -> Self {
         Self {
             font_size: 14,
+            font_family: String::new(),
             scrollback: 10_000,
             cursor_blink: true,
             copy_on_select: false,

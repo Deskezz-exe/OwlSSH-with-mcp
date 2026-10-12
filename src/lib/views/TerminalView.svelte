@@ -44,12 +44,24 @@
   const keys = $derived(settings.value?.keybindings);
   const themeName = $derived(settings.resolvedTheme);
 
+  const MIN_FONT = 9;
+  const MAX_FONT = 28;
+  const DEFAULT_FONT = 14;
+  let saveFontTimer = 0;
+
+  /** The chosen font first, the bundled one as the fallback. */
+  function fontStack(custom: string | undefined): string {
+    const base = '"JetBrains Mono", "Cascadia Mono", Consolas, monospace';
+    const name = custom?.trim().replace(/["\\]/g, "");
+    return name ? `"${name}", ${base}` : base;
+  }
+
   onMount(async () => {
     // Measure cells with the real font, not a fallback that is still loading.
     await document.fonts.load(`${termSettings?.fontSize ?? 14}px "JetBrains Mono"`).catch(() => {});
 
     term = new Terminal({
-      fontFamily: '"JetBrains Mono", "Cascadia Mono", Consolas, monospace',
+      fontFamily: fontStack(termSettings?.fontFamily),
       fontSize: termSettings?.fontSize ?? 14,
       lineHeight: 1.15,
       cursorBlink: termSettings?.cursorBlink ?? true,
@@ -97,6 +109,7 @@
       frame = requestAnimationFrame(() => active && fit?.fit());
     });
     resizeObserver.observe(container);
+    container.addEventListener("wheel", onWheel, { passive: false, capture: true });
 
     unlisten = await listen<TerminalExit>("terminal-exit", ({ payload }) => {
       if (payload.id === sessionId) {
@@ -118,6 +131,7 @@
     terminalPaste.delete(tabId);
     unlisten?.();
     resizeObserver?.disconnect();
+    clearTimeout(saveFontTimer);
     if (sessionId !== null) api.terminalClose(sessionId);
     term?.dispose();
   });
@@ -174,6 +188,18 @@
       openSearch();
       return false;
     }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const step =
+        e.code === "Equal" || e.code === "NumpadAdd" ? 1
+        : e.code === "Minus" || e.code === "NumpadSubtract" ? -1
+        : (e.code === "Digit0" || e.code === "Numpad0") && !e.shiftKey ? 0
+        : null;
+      if (step !== null) {
+        e.preventDefault();
+        zoom(step);
+        return false;
+      }
+    }
     if (matches(e, keys.copy)) {
       // A plain Ctrl+C binding still interrupts the shell when nothing is selected.
       if (!term?.hasSelection()) return true;
@@ -187,6 +213,26 @@
       return false;
     }
     return true;
+  }
+
+  /** Ctrl+wheel zooms like a browser; plain wheel scrolls as usual. */
+  function onWheel(e: WheelEvent) {
+    if (!(e.ctrlKey || e.metaKey) || e.deltaY === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    zoom(e.deltaY < 0 ? 1 : -1);
+  }
+
+  /** Changes the font size right away and saves it once the user stops. 0 resets it. */
+  function zoom(step: number) {
+    if (!term) return;
+    const current = term.options.fontSize ?? DEFAULT_FONT;
+    const size = step === 0 ? DEFAULT_FONT : Math.min(MAX_FONT, Math.max(MIN_FONT, current + step));
+    if (size === current) return;
+    term.options.fontSize = size;
+    fit?.fit();
+    clearTimeout(saveFontTimer);
+    saveFontTimer = window.setTimeout(() => settings.update((x) => (x.terminal.fontSize = size)), 400);
   }
 
   function openSearch() {
@@ -238,6 +284,7 @@
   $effect(() => {
     if (!term || !termSettings) return;
     term.options.fontSize = termSettings.fontSize;
+    term.options.fontFamily = fontStack(termSettings.fontFamily);
     term.options.cursorBlink = termSettings.cursorBlink;
     term.options.scrollback = termSettings.scrollback;
     fit?.fit();

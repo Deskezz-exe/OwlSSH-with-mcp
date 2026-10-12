@@ -63,6 +63,8 @@ export interface Settings {
   theme: "dark" | "light" | "system";
   terminal: {
     fontSize: number;
+    /** Empty: the bundled JetBrains Mono. */
+    fontFamily: string;
     scrollback: number;
     cursorBlink: boolean;
     copyOnSelect: boolean;

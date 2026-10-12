@@ -33,7 +33,7 @@ function host(id: string, name: string, hostname: string, username: string, tags
 let settings: Settings = {
   locale: "en",
   theme: "dark",
-  terminal: { fontSize: 14, scrollback: 10000, cursorBlink: true, copyOnSelect: false, rightClick: "menu" },
+  terminal: { fontSize: 14, fontFamily: "", scrollback: 10000, cursorBlink: true, copyOnSelect: false, rightClick: "menu" },
   keybindings: { copy: "Ctrl+Shift+C", paste: "Ctrl+Shift+V" },
   streamerMode: false,
   mcp: { enabled: true, port: 47821, confirmDangerous: true, fullAccess: false, token: "3f9c2a7be14d4c0f9a51d6e2b8c07a44" },
