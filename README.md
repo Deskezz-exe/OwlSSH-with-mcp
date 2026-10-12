@@ -17,7 +17,7 @@
 ![Rust](https://img.shields.io/badge/Rust-stable-orange?logo=rust)
 ![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)
 
-[Download](#download) · [Features](#features) · [AI assistants](#ai-assistants-mcp) · [Development](#development)
+[Download](#download) · [Features](#features) · [Tunnels](#tunnels) · [AI assistants](#ai-assistants-mcp) · [Development](#development)
 
 <br>
 
@@ -44,6 +44,12 @@ Get the latest build from [Releases](https://github.com/Deskezz-exe/OwlSSH-with-
 | macOS (Apple Silicon and Intel) | `*_universal.dmg` |
 | Linux | `*.AppImage`, `*.deb` or `*.rpm` |
 
+The installer adds OwlSSH to the Start menu, registers an uninstaller and installs WebView2
+if it is missing. The portable build runs from any folder and needs WebView2, which comes with
+Windows 11. Either way OwlSSH is one small executable: it uses the system WebView instead of
+bundling a browser, and keeps its data in your user profile. A new installer updates an
+existing installation in place.
+
 Every release has a `SHA256SUMS.txt` to check the files. The builds are not signed with a
 paid certificate yet, so Windows SmartScreen may ask you to click **More info** → **Run anyway**,
 and on macOS the first launch is right click → **Open**.
@@ -61,7 +67,14 @@ and on macOS the first launch is right click → **Open**.
 - Copy and paste shortcuts you can change in settings (`Ctrl+Shift+C` / `Ctrl+Shift+V`
   by default). They match the physical key, so they work on any keyboard layout
 - Copy on select, right click to paste or open a menu, bracketed paste
-- Font size, scrollback and cursor settings
+- Find in output with `Ctrl+Shift+F`: match case, regular expressions, highlighted matches
+- `Ctrl+click` opens links in the browser
+- Zoom with `Ctrl+wheel` or `Ctrl+=` / `Ctrl+-`, any installed monospace font,
+  Unicode 11 widths so emoji and CJK text stay aligned
+- Reconnects by itself when the connection drops, keeping the old output above a divider
+- The shell title on the tab, a mark on background tabs that rang the bell,
+  a question before closing a running session
+- Save the output to a text file
 
 **Dashboard**
 - A card per server with live CPU, RAM and disk bars, uptime, load, OS,
@@ -69,6 +82,9 @@ and on macOS the first launch is right click → **Open**.
 - One POSIX probe per refresh over the existing connection
 - Favorites, tags and search
 - Import hosts from `~/.ssh/config`, jump hosts (ProxyJump)
+- Set up key login in one click: OwlSSH adds your key to the server's `authorized_keys`,
+  checks that it works and switches the server over. Your existing `~/.ssh/id_ed25519`
+  is reused, a new key is created only when there is none
 
 **Files**
 - Two panes: this computer and the server
@@ -94,6 +110,22 @@ and on macOS the first launch is right click → **Open**.
 **Interface**
 - English and Russian, switchable in settings
 - Dark, light or system theme
+- Keeps running in the tray when the window is closed, so terminals, tunnels and the MCP
+  server stay up. Quit from the tray menu, or turn this off in settings
+
+## Tunnels
+
+Reach services that only listen on a server, such as a database or an admin panel, as if they
+ran on this computer, without opening their ports to the internet.
+
+| Direction | Example |
+|---|---|
+| Local | `127.0.0.1:15432` here → server → `localhost:5432`: connect DBeaver to the server's Postgres |
+| Remote | server `127.0.0.1:9000` → this computer → `127.0.0.1:5173`: show the server a dev site running here |
+
+Tunnels are saved per server and started or stopped from the *Tunnels* screen. A tunnel
+runs on the server's connection; if that connection drops, the tunnel shows the error and
+starts again with one click.
 
 ## AI assistants (MCP)
 
@@ -154,7 +186,8 @@ For Claude Desktop, Cursor and other clients the same screen gives a JSON config
 | Frontend | Svelte 5, TypeScript, Vite, xterm.js |
 
 The Rust side has unit tests and end-to-end tests that start an in-process SSH
-server to check host key trust, password auth, jump hosts, exec and the PTY path.
+server to check host key trust, password and key auth, jump hosts, exec, the PTY path,
+key setup and both directions of port forwarding.
 
 ## Development
 
@@ -180,12 +213,6 @@ npm run tauri build
 
 Releases are built by GitHub Actions: pushing a tag like `v0.2.0` builds every platform,
 attaches SHA-256 sums and publishes the release with the notes from [CHANGELOG.md](CHANGELOG.md).
-
-## Roadmap
-
-- One-click SSH key setup on a server
-- Port forwarding (local and remote tunnels)
-- System tray
 
 ## License
 

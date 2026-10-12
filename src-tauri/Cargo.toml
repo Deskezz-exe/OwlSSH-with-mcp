@@ -1,6 +1,6 @@
 [package]
 name = "owlssh"
-version = "0.1.0"
+version = "0.2.0"
 description = "SSH client and server dashboard with a built-in MCP server for AI assistants"
 authors = ["Deskezz-exe"]
 license = "MIT"
