@@ -12,6 +12,7 @@ use russh::client;
 use serde::Deserialize;
 
 use super::auth::{self, Secrets};
+use super::forward::RemoteForwards;
 use super::handler::{ClientHandler, HostKeyIssue};
 use crate::error::{AppError, AppResult};
 use crate::hosts::{AuthKind, Host, HostStore};
@@ -51,6 +52,7 @@ pub struct SshPool {
     locks: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     /// Key passphrases typed this session, by key path. Memory only.
     passphrases: Mutex<HashMap<String, String>>,
+    forwards: RemoteForwards,
 }
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -62,7 +64,12 @@ impl SshPool {
             conns: Mutex::default(),
             locks: Mutex::default(),
             passphrases: Mutex::default(),
+            forwards: RemoteForwards::default(),
         }
+    }
+
+    pub fn remote_forwards(&self) -> RemoteForwards {
+        self.forwards.clone()
     }
 
     /// An open connection for `host_id`, if there is a live one.
@@ -180,6 +187,8 @@ impl SshPool {
             app_known_hosts: self.known_hosts.clone(),
             trusted_fingerprint: opts.trust_fingerprint.clone(),
             issue: issue.clone(),
+            host_id: host.id.clone(),
+            forwards: self.forwards.clone(),
         };
         let config = client_config();
 

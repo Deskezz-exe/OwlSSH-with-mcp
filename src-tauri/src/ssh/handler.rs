@@ -8,8 +8,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use russh::client;
+use super::forward::{serve_forwarded, RemoteForwards};
+
+use russh::client::{self, Msg, Session};
 use russh::keys::{self, HashAlg, PublicKey, PublicKeyOrCertificate};
+use russh::Channel;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostKeyIssue {
@@ -31,6 +34,9 @@ pub struct ClientHandler {
     pub trusted_fingerprint: Option<String>,
     /// Filled when the key was rejected, read by the caller after the failure.
     pub issue: Arc<Mutex<Option<HostKeyIssue>>>,
+    pub host_id: String,
+    /// Where remote forwards of this host lead on this computer.
+    pub forwards: RemoteForwards,
 }
 
 impl client::Handler for ClientHandler {
@@ -45,6 +51,24 @@ impl client::Handler for ClientHandler {
             PublicKeyOrCertificate::Certificate(cert) => PublicKey::from(cert.public_key().clone()),
         };
         Ok(self.verify(&key))
+    }
+
+    /// A connection arrived on a remote forward. Unknown ports are refused.
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: Channel<Msg>,
+        _connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        reply: client::ChannelOpenHandle,
+        _session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        if let Some(target) = self.forwards.target(&self.host_id, connected_port) {
+            reply.accept().await;
+            serve_forwarded(channel, target);
+        }
+        Ok(())
     }
 }
 

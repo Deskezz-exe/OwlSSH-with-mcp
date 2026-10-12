@@ -11,6 +11,7 @@ use crate::snippets::SnippetStore;
 use crate::ssh::sftp::SftpManager;
 use crate::ssh::terminal::TerminalManager;
 use crate::ssh::SshPool;
+use crate::tunnels::{TunnelRuntime, TunnelStore};
 
 /// Everything the commands share, managed by Tauri.
 pub struct AppState {
@@ -23,6 +24,8 @@ pub struct AppState {
     pub audit: AuditLog,
     pub confirmations: Confirmations,
     pub snippets: SnippetStore,
+    pub tunnels: TunnelStore,
+    pub tunnel_runtime: TunnelRuntime,
 }
 
 impl AppState {
@@ -46,6 +49,8 @@ impl AppState {
             audit: AuditLog::new(data_dir.join("mcp-audit.jsonl")),
             confirmations: Confirmations::default(),
             snippets: SnippetStore::load(data_dir.join("snippets.json")),
+            tunnels: TunnelStore::load(data_dir.join("tunnels.json")),
+            tunnel_runtime: TunnelRuntime::default(),
         })
     }
 }

@@ -17,6 +17,8 @@ pub fn save_host(state: State<'_, AppState>, input: HostInput) -> AppResult<Host
 
 #[tauri::command]
 pub fn delete_host(state: State<'_, AppState>, id: String) -> AppResult<()> {
+    state.tunnel_runtime.stop_host(&id);
+    state.tunnels.delete_for_host(&id)?;
     state.hosts.delete(&id)
 }
 

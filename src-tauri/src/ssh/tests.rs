@@ -12,8 +12,8 @@ use russh::{Channel, ChannelId};
 use tokio::net::{TcpListener, TcpStream};
 
 use super::exec::exec;
-use super::keysetup;
 use super::terminal::TerminalManager;
+use super::{forward, keysetup};
 use super::{ConnectOptions, SshPool};
 use crate::error::AppError;
 use crate::hosts::{AuthKind, Host, HostInput, HostStore};
@@ -147,6 +147,42 @@ impl server::Handler for TestServer {
             }
         });
         Ok(())
+    }
+
+    /// Remote forwarding: listens on the asked port and hands every
+    /// connection back to the client as a forwarded-tcpip channel.
+    async fn tcpip_forward(
+        &mut self,
+        address: &str,
+        port: &mut u32,
+        session: &mut Session,
+    ) -> Result<bool, Self::Error> {
+        let listener = TcpListener::bind((address, *port as u16)).await?;
+        let bound = u32::from(listener.local_addr()?.port());
+        *port = bound;
+        let handle = session.handle();
+        let address = address.to_string();
+        tokio::spawn(async move {
+            while let Ok((mut tcp, peer)) = listener.accept().await {
+                let handle = handle.clone();
+                let address = address.clone();
+                tokio::spawn(async move {
+                    if let Ok(channel) = handle
+                        .channel_open_forwarded_tcpip(
+                            address,
+                            bound,
+                            peer.ip().to_string(),
+                            u32::from(peer.port()),
+                        )
+                        .await
+                    {
+                        let mut stream = channel.into_stream();
+                        let _ = tokio::io::copy_bidirectional(&mut tcp, &mut stream).await;
+                    }
+                });
+            }
+        });
+        Ok(true)
     }
 
     /// Lets the server act as a jump host: pipes the channel to the target.
@@ -434,4 +470,152 @@ async fn sets_up_key_login_and_checks_it() {
     let conn = f.pool.existing(&host.id).unwrap();
     keysetup::install(&conn, &local.public_line).await.unwrap();
     f.pool.verify_login(&f.store, &with_key).await.unwrap();
+}
+
+/// A TCP server that answers every line with the same line in upper case.
+async fn start_upper_server() -> u16 {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        while let Ok((socket, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let (read, mut write) = socket.into_split();
+                let mut lines = BufReader::new(read).lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    let _ = write
+                        .write_all(format!("{}\n", line.to_uppercase()).as_bytes())
+                        .await;
+                }
+            });
+        }
+    });
+    port
+}
+
+/// Sends one line to `port` and returns the answer.
+async fn ask_line(port: u16, text: &str) -> String {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let socket = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+    let (read, mut write) = socket.into_split();
+    write
+        .write_all(format!("{text}\n").as_bytes())
+        .await
+        .unwrap();
+    let mut answer = String::new();
+    tokio::time::timeout(
+        Duration::from_secs(5),
+        BufReader::new(read).read_line(&mut answer),
+    )
+    .await
+    .expect("no answer through the tunnel")
+    .unwrap();
+    answer.trim_end().to_string()
+}
+
+fn ended() -> (
+    forward::OnEnd,
+    tokio::sync::oneshot::Receiver<Option<String>>,
+) {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    (
+        Box::new(move |reason| {
+            let _ = tx.send(reason);
+        }),
+        rx,
+    )
+}
+
+#[tokio::test]
+async fn local_forward_reaches_a_service_behind_the_server() {
+    let service = start_upper_server().await;
+    let port = start_server(key(KEY_A)).await;
+    let f = fixture();
+    let host = add_host(&f.store, "a", "127.0.0.1", port, None);
+    trust(&f, &host, &with_password()).await;
+    let conn = f.pool.existing(&host.id).unwrap();
+
+    let cancel = tokio_util::sync::CancellationToken::new();
+    let (on_end, end) = ended();
+    let local = forward::start_local(
+        conn,
+        "127.0.0.1",
+        0,
+        "127.0.0.1".into(),
+        service,
+        cancel.clone(),
+        on_end,
+    )
+    .await
+    .unwrap();
+    assert_eq!(ask_line(local, "hello").await, "HELLO");
+    assert_eq!(ask_line(local, "again").await, "AGAIN");
+
+    cancel.cancel();
+    assert_eq!(end.await.unwrap(), None);
+    assert!(
+        TcpStream::connect(("127.0.0.1", local)).await.is_err(),
+        "port is released"
+    );
+}
+
+#[tokio::test]
+async fn remote_forward_brings_server_connections_here() {
+    let service = start_upper_server().await;
+    let port = start_server(key(KEY_A)).await;
+    let f = fixture();
+    let host = add_host(&f.store, "a", "127.0.0.1", port, None);
+    trust(&f, &host, &with_password()).await;
+    let conn = f.pool.existing(&host.id).unwrap();
+
+    let cancel = tokio_util::sync::CancellationToken::new();
+    let (on_end, end) = ended();
+    let remote = forward::start_remote(
+        conn,
+        f.pool.remote_forwards(),
+        &host.id,
+        "127.0.0.1",
+        0,
+        "127.0.0.1".into(),
+        service,
+        cancel.clone(),
+        on_end,
+    )
+    .await
+    .unwrap();
+    // The test server listens on this port and plays the remote side.
+    assert_ne!(remote, 0);
+    assert_eq!(ask_line(remote, "from the server").await, "FROM THE SERVER");
+
+    cancel.cancel();
+    assert_eq!(end.await.unwrap(), None);
+}
+
+#[tokio::test]
+async fn forward_ends_when_the_connection_closes() {
+    let service = start_upper_server().await;
+    let port = start_server(key(KEY_A)).await;
+    let f = fixture();
+    let host = add_host(&f.store, "a", "127.0.0.1", port, None);
+    trust(&f, &host, &with_password()).await;
+    let conn = f.pool.existing(&host.id).unwrap();
+
+    let (on_end, end) = ended();
+    forward::start_local(
+        conn,
+        "127.0.0.1",
+        0,
+        "127.0.0.1".into(),
+        service,
+        Default::default(),
+        on_end,
+    )
+    .await
+    .unwrap();
+    f.pool.disconnect(&host.id).await;
+    let reason = tokio::time::timeout(Duration::from_secs(5), end)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(reason.is_some_and(|r| r.contains("closed")));
 }

@@ -2,6 +2,7 @@
 
 mod auth;
 pub mod exec;
+pub mod forward;
 mod handler;
 pub mod keysetup;
 pub mod metrics;

@@ -8,6 +8,7 @@ mod snippets;
 mod ssh;
 mod state;
 mod tray;
+mod tunnels;
 
 use tauri::Manager;
 
@@ -68,6 +69,12 @@ pub fn run() {
             commands::mcp::mcp_status,
             commands::mcp::mcp_activity,
             commands::mcp::mcp_confirm_answer,
+            commands::tunnels::list_tunnels,
+            commands::tunnels::tunnel_statuses,
+            commands::tunnels::save_tunnel,
+            commands::tunnels::delete_tunnel,
+            commands::tunnels::start_tunnel,
+            commands::tunnels::stop_tunnel,
             commands::snippets::list_snippets,
             commands::snippets::save_snippet,
             commands::snippets::delete_snippet,
